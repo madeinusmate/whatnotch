@@ -1,0 +1,79 @@
+name: Whatnotch
+options:
+  bundleIdPrefix: app.whatnotch
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "Apple Development: Stefano Cantu (FS4C3589K2)"
+    DEVELOPMENT_TEAM: U5FHQCWR8L
+    CODE_SIGNING_REQUIRED: "NO"
+    ENABLE_HARDENED_RUNTIME: "NO"
+    ENABLE_APP_SANDBOX: "NO"
+    ENABLE_DEBUG_DYLIB: "NO"
+    CODE_SIGN_INJECT_BASE_ENTITLEMENTS: "YES"
+targets:
+  Whatnotch:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes:
+          - Info.plist
+          - Whatnotch.entitlements
+    resources:
+      - path: Shelf
+      - path: Workspace/AGENTS.md
+    info:
+      path: App/Info.plist
+      properties:
+        LSUIElement: true
+        CFBundleName: Whatnotch
+        CFBundleDisplayName: Whatnotch
+        NSHighResolutionCapable: true
+        LSMinimumSystemVersion: "14.0"
+    entitlements:
+      path: App/Whatnotch.entitlements
+    postBuildScripts:
+      - name: Bundle sidecar
+        basedOnDependencyAnalysis: false
+        script: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          cd "$SRCROOT/Sidecar"
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+          pnpm build
+          RES="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources"
+          DEST="$RES/Sidecar"
+          mkdir -p "$DEST" "$RES/Shelf"
+          rsync -a --delete \
+            --exclude src \
+            --exclude tsconfig.json \
+            "$SRCROOT/Sidecar/" "$DEST/"
+          rsync -a --delete "$SRCROOT/Shelf/" "$RES/Shelf/"
+          cp "$SRCROOT/Workspace/AGENTS.md" "$RES/AGENTS.md"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.whatnotch.Whatnotch
+        PRODUCT_NAME: Whatnotch
+        PRODUCT_MODULE_NAME: Whatnotch
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: App/Whatnotch.entitlements
+        ENABLE_APP_SANDBOX: NO
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+schemes:
+  Whatnotch:
+    build:
+      targets:
+        Whatnotch: all
+    run:
+      config: Debug

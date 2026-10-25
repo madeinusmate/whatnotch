@@ -1,0 +1,371 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		085C1329119C72FAA1E8028E /* BridgeRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A43FAF290698ED0DF656623 /* BridgeRunner.swift */; };
+		0B7A7F886E5A48A8DE1D14B2 /* FrameSpring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C40E8FFBDE615CA1FD31B92 /* FrameSpring.swift */; };
+		19AC8ACACE59CCD090FDDBAF /* NotchSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F00232ED369E5CC1823AFD9 /* NotchSchemeHandler.swift */; };
+		532A8F230AFC042A1F73A24C /* SidecarClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B866A9FB5BB21F3B156DB5 /* SidecarClient.swift */; };
+		62C648E744D08FA999D8B525 /* NotchPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74AFAB0AF5D959A5189A4D49 /* NotchPanel.swift */; };
+		8FB31C5B003EDB675AB87B68 /* FolderWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FE488C009ACB838AFA83233 /* FolderWatcher.swift */; };
+		9BFBBF3DF1393E039305D2CC /* WidgetRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFFD2F14398AB05D01D65B01 /* WidgetRuntime.swift */; };
+		B1B7F1A17B54351640DCC2B0 /* NodeFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB91C25CF309DAEC736C7339 /* NodeFinder.swift */; };
+		B44BD39DA8E7AF656435B86B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39304D8E3584E4E8689CD17 /* AppDelegate.swift */; };
+		D42558C0BC7CBE575266575F /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAD5A501673205D8644B487C /* KeychainStore.swift */; };
+		E96458459F7537C584EA6CD3 /* NotchScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48DB92B1375BFEA3C463286B /* NotchScreen.swift */; };
+		EB2ECC23B2DD98290150005B /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3031CCD6D4D6B3B3399052AA /* AppModel.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0F00232ED369E5CC1823AFD9 /* NotchSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchSchemeHandler.swift; sourceTree = "<group>"; };
+		1FE488C009ACB838AFA83233 /* FolderWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderWatcher.swift; sourceTree = "<group>"; };
+		3031CCD6D4D6B3B3399052AA /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		48DB92B1375BFEA3C463286B /* NotchScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchScreen.swift; sourceTree = "<group>"; };
+		74AFAB0AF5D959A5189A4D49 /* NotchPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchPanel.swift; sourceTree = "<group>"; };
+		8C40E8FFBDE615CA1FD31B92 /* FrameSpring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameSpring.swift; sourceTree = "<group>"; };
+		9A43FAF290698ED0DF656623 /* BridgeRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeRunner.swift; sourceTree = "<group>"; };
+		A1B866A9FB5BB21F3B156DB5 /* SidecarClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidecarClient.swift; sourceTree = "<group>"; };
+		A39304D8E3584E4E8689CD17 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		AAD5A501673205D8644B487C /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		AAE171C9F520A01B4AEEDD87 /* Whatnotch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Whatnotch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB91C25CF309DAEC736C7339 /* NodeFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeFinder.swift; sourceTree = "<group>"; };
+		CFFD2F14398AB05D01D65B01 /* WidgetRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetRuntime.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		906E4C35BA9DE88A6F9393FB = {
+			isa = PBXGroup;
+			children = (
+				A4D677F254612CD7BE4D420C /* App */,
+				F3CDB15F27BCDEF2614DA173 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A4D677F254612CD7BE4D420C /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A39304D8E3584E4E8689CD17 /* AppDelegate.swift */,
+				3031CCD6D4D6B3B3399052AA /* AppModel.swift */,
+				9A43FAF290698ED0DF656623 /* BridgeRunner.swift */,
+				1FE488C009ACB838AFA83233 /* FolderWatcher.swift */,
+				8C40E8FFBDE615CA1FD31B92 /* FrameSpring.swift */,
+				AAD5A501673205D8644B487C /* KeychainStore.swift */,
+				AB91C25CF309DAEC736C7339 /* NodeFinder.swift */,
+				74AFAB0AF5D959A5189A4D49 /* NotchPanel.swift */,
+				0F00232ED369E5CC1823AFD9 /* NotchSchemeHandler.swift */,
+				48DB92B1375BFEA3C463286B /* NotchScreen.swift */,
+				A1B866A9FB5BB21F3B156DB5 /* SidecarClient.swift */,
+				CFFD2F14398AB05D01D65B01 /* WidgetRuntime.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		F3CDB15F27BCDEF2614DA173 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AAE171C9F520A01B4AEEDD87 /* Whatnotch.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		58455F92CC0389B2BEC66BBB /* Whatnotch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3A4C9F0C12E16BBED6DC8889 /* Build configuration list for PBXNativeTarget "Whatnotch" */;
+			buildPhases = (
+				FC1EDD156B124800808BD961 /* Sources */,
+				686AFF18FD4DCD5C7AE7E366 /* Bundle sidecar */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Whatnotch;
+			packageProductDependencies = (
+			);
+			productName = Whatnotch;
+			productReference = AAE171C9F520A01B4AEEDD87 /* Whatnotch.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A5CE0CBC75015E7A7C0781B9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					58455F92CC0389B2BEC66BBB = {
+						DevelopmentTeam = U5FHQCWR8L;
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = 3CF0C73AE18BED1B60F834C4 /* Build configuration list for PBXProject "Whatnotch" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 906E4C35BA9DE88A6F9393FB;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = F3CDB15F27BCDEF2614DA173 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				58455F92CC0389B2BEC66BBB /* Whatnotch */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		686AFF18FD4DCD5C7AE7E366 /* Bundle sidecar */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle sidecar";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"\ncd \"$SRCROOT/Sidecar\"\nif [ -f pnpm-lock.yaml ]; then\n  pnpm install --frozen-lockfile\nelse\n  pnpm install\nfi\npnpm build\nRES=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources\"\nDEST=\"$RES/Sidecar\"\nmkdir -p \"$DEST\" \"$RES/Shelf\"\nrsync -a --delete \\\n  --exclude src \\\n  --exclude tsconfig.json \\\n  \"$SRCROOT/Sidecar/\" \"$DEST/\"\nrsync -a --delete \"$SRCROOT/Shelf/\" \"$RES/Shelf/\"\ncp \"$SRCROOT/Workspace/AGENTS.md\" \"$RES/AGENTS.md\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		FC1EDD156B124800808BD961 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B44BD39DA8E7AF656435B86B /* AppDelegate.swift in Sources */,
+				EB2ECC23B2DD98290150005B /* AppModel.swift in Sources */,
+				085C1329119C72FAA1E8028E /* BridgeRunner.swift in Sources */,
+				8FB31C5B003EDB675AB87B68 /* FolderWatcher.swift in Sources */,
+				0B7A7F886E5A48A8DE1D14B2 /* FrameSpring.swift in Sources */,
+				D42558C0BC7CBE575266575F /* KeychainStore.swift in Sources */,
+				B1B7F1A17B54351640DCC2B0 /* NodeFinder.swift in Sources */,
+				62C648E744D08FA999D8B525 /* NotchPanel.swift in Sources */,
+				19AC8ACACE59CCD090FDDBAF /* NotchSchemeHandler.swift in Sources */,
+				E96458459F7537C584EA6CD3 /* NotchScreen.swift in Sources */,
+				532A8F230AFC042A1F73A24C /* SidecarClient.swift in Sources */,
+				9BFBBF3DF1393E039305D2CC /* WidgetRuntime.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		27377231F5033E2922018677 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "Apple Development: Stefano Cantu (FS4C3589K2)";
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = YES;
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = U5FHQCWR8L;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_DEBUG_DYLIB = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		726415D7850787C6C6831628 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/Whatnotch.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = app.whatnotch.Whatnotch;
+				PRODUCT_MODULE_NAME = Whatnotch;
+				PRODUCT_NAME = Whatnotch;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		D4CEF9149231067AB3BB8411 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "Apple Development: Stefano Cantu (FS4C3589K2)";
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = YES;
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = U5FHQCWR8L;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_DEBUG_DYLIB = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		EFCEE6FBF09BD8D0F674D78F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/Whatnotch.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = app.whatnotch.Whatnotch;
+				PRODUCT_MODULE_NAME = Whatnotch;
+				PRODUCT_NAME = Whatnotch;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3A4C9F0C12E16BBED6DC8889 /* Build configuration list for PBXNativeTarget "Whatnotch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				726415D7850787C6C6831628 /* Debug */,
+				EFCEE6FBF09BD8D0F674D78F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3CF0C73AE18BED1B60F834C4 /* Build configuration list for PBXProject "Whatnotch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				27377231F5033E2922018677 /* Debug */,
+				D4CEF9149231067AB3BB8411 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A5CE0CBC75015E7A7C0781B9 /* Project object */;
+}

@@ -1,0 +1,7 @@
+build/
+DerivedData/
+.DS_Store
+Sidecar/node_modules/
+Sidecar/dist/
+*.xcuserstate
+xcuserdata/
