@@ -164,6 +164,7 @@ final class NotchPanel: NSPanel {
     var hoverChanged: ((Bool) -> Void)?
     var escaped: (() -> Void)?
     var onProgress: ((CGFloat, Bool) -> Void)?
+    var onScreenChange: (() -> Void)?
     /// The composer, a settings field, or a widget text field is focused.
     /// Command shortcuts are forwarded to the web view; this monitor otherwise
     /// sees them before they can become edit actions.
@@ -173,9 +174,11 @@ final class NotchPanel: NSPanel {
     private var collapsedFrame = CGRect.zero
     private var openFrame = CGRect.zero
     private var openHeight: CGFloat = 148
-    /// Requested width of the closed pill while a compact widget is showing.
-    /// Nil keeps the hardware notch.
+    /// Width of the compact content that sits beside the camera housing.
+    /// Nil keeps the hardware notch empty.
     private var compactWidth: CGFloat?
+    /// Cap on that content width. The housing is added in the middle, so the
+    /// pill itself can be wider than this.
     private let maxCompactWidth: CGFloat = 320
     private var expanded = false
     private var lastInside = false
@@ -248,6 +251,13 @@ final class NotchPanel: NSPanel {
     }
 
     var notchHeight: CGFloat { max(collapsedFrame.height, 32) }
+
+    /// Width of the camera housing the closed pill must keep clear. Zero when
+    /// the closed shape is the fallback pill and nothing is covering its middle.
+    var hardwareNotchWidth: CGFloat {
+        guard NotchScreen.hardwareNotch(on: NotchScreen.host()) != nil else { return 0 }
+        return collapsedFrame.width
+    }
 
     var openProgress: CGFloat {
         spring.progress(collapsedHeight: collapsedFrame.height, openHeight: openFrame.height)
@@ -509,19 +519,28 @@ final class NotchPanel: NSPanel {
         }
     }
 
+    /// Closed pill. Compact content is laid out beside the camera housing, so
+    /// the requested width is added to the housing instead of drawn across it.
+    /// The pill stays centered on the housing; if it cannot fit, it shrinks
+    /// before it slides off the notch.
     private var restFrame: CGRect {
         guard let requested = compactWidth else { return collapsedFrame }
         let collapsed = collapsedFrame
-        let width = min(maxCompactWidth, max(collapsed.width, requested))
+        let housing = hardwareNotchWidth
+        let content = min(maxCompactWidth, max(0, requested))
+        var width = housing > 1 ? housing + content : min(maxCompactWidth, max(collapsed.width, requested))
+        let screen = NotchScreen.host().frame.insetBy(dx: 8, dy: 0)
+        let side = min(collapsed.midX - screen.minX, screen.maxX - collapsed.midX)
+        if side > 1 { width = min(width, side * 2) }
+        width = max(width, collapsed.width)
         var frame = CGRect(
             x: collapsed.midX - width / 2,
             y: collapsed.maxY - collapsed.height,
             width: width,
             height: collapsed.height
         )
-        let bounds = NotchScreen.host().frame.insetBy(dx: 8, dy: 0)
-        if frame.minX < bounds.minX { frame.origin.x = bounds.minX }
-        if frame.maxX > bounds.maxX { frame.origin.x = bounds.maxX - frame.width }
+        if frame.minX < screen.minX { frame.origin.x = screen.minX }
+        if frame.maxX > screen.maxX { frame.origin.x = screen.maxX - frame.width }
         return frame
     }
 
@@ -547,6 +566,7 @@ final class NotchPanel: NSPanel {
         let target = expanded ? openFrame : (previewing ? hoverFrame() : restFrame)
         spring.retarget(target, reduceMotion: reduceMotion, now: CACurrentMediaTime())
         ensureLink()
+        onScreenChange?()
     }
 
     private func ensureLink() {

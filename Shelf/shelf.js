@@ -1022,6 +1022,16 @@ const commitName = (input) => {
   post({ type: "renameWidget", id, title });
 };
 
+const housingWidth = () => {
+  const specified = rootEl.style.getPropertyValue("--hardware-notch");
+  const raw = specified || getComputedStyle(rootEl).getPropertyValue("--hardware-notch");
+  const value = Number.parseFloat(raw);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+};
+
+const compactSource = (id, revision, housing) =>
+  `notch://widget/${encodeURIComponent(id)}/compact.html?rev=${revision}&housing=${housing}`;
+
 const ensureCompactFrame = () => {
   let frame = compactEl.querySelector("iframe");
   if (frame) return frame;
@@ -1030,6 +1040,8 @@ const ensureCompactFrame = () => {
   frame.addEventListener("load", () => {
     const id = frame.dataset.id;
     if (id) post({ type: "compactReady", id });
+    const width = Number(frame.dataset.housing || "0");
+    frame.contentWindow?.postMessage({ source: "notch-host", type: "housing", width }, "*");
   });
   compactEl.append(frame);
   return frame;
@@ -1048,10 +1060,13 @@ const renderCompact = (id, widgets) => {
   compactEl.hidden = false;
   const frame = ensureCompactFrame();
   frame.dataset.id = widget.id;
+  frame.dataset.rev = widget.revision;
   frame.title = widget.title;
   if (signature === compactSignature) return;
   compactSignature = signature;
-  frame.src = `notch://widget/${encodeURIComponent(widget.id)}/compact.html?rev=${widget.revision}`;
+  const housing = housingWidth();
+  frame.dataset.housing = String(housing);
+  frame.src = compactSource(widget.id, widget.revision, housing);
 };
 
 const renderLibrary = (widgets, pinnedId) => {
@@ -1255,6 +1270,20 @@ window.shelf = {
     const open = Math.max(0, Math.min(1, Number(value) || 0));
     rootEl.style.setProperty("--open", String(open));
     rootEl.classList.toggle("compact-closed", open < 0.28);
+  },
+  setHousing: (width) => {
+    const value = Math.max(0, Number(width) || 0);
+    rootEl.style.setProperty("--hardware-notch", `${value}px`);
+    const frame = compactEl.querySelector("iframe");
+    if (!frame?.dataset.id) return;
+    const previous = Number(frame.dataset.housing || "0");
+    const split = (amount) => amount > 1;
+    frame.dataset.housing = String(value);
+    if (split(previous) !== split(value)) {
+      frame.src = compactSource(frame.dataset.id, frame.dataset.rev || "", value);
+      return;
+    }
+    frame.contentWindow?.postMessage({ source: "notch-host", type: "housing", width: value }, "*");
   },
 };
 

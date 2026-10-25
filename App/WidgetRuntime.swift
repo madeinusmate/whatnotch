@@ -25,8 +25,13 @@ enum WidgetBridge {
         window.dispatchEvent(new CustomEvent("notch-state", { detail: body }));
       };
       window.__notchState = deliver;
+      let onHousing = () => {};
       window.addEventListener("message", (event) => {
         if (!event.data || event.data.source !== "notch-host") return;
+        if (event.data.type === "housing") {
+          onHousing(event.data.width);
+          return;
+        }
         deliver(event.data.body);
       });
       if (location.host !== "widget") return;
@@ -51,8 +56,77 @@ enum WidgetBridge {
       const compactPage = location.pathname.endsWith("/compact.html");
       if (compactPage) {
         const style = document.createElement("style");
-        style.textContent = "html,body{margin:0;height:100%;background:transparent;color:rgba(255,255,255,.92);font:13px/1 ui-sans-serif,system-ui,sans-serif;overflow:hidden}body{display:flex;align-items:center;justify-content:center;gap:8px;padding:0 12px;white-space:nowrap}";
+        const housingFrom = (value) => Math.max(0, Number(value) || 0);
+        let housing = housingFrom(new URLSearchParams(location.search).get("housing"));
+        const paint = () => {
+          document.documentElement.style.setProperty("--hardware-notch", housing + "px");
+        };
+        paint();
+        const base = "html,body{margin:0;height:100%;background:transparent;color:rgba(255,255,255,.92);font:13px/1 ui-sans-serif,system-ui,sans-serif;overflow:hidden}";
+        const centered = "body{display:flex;align-items:center;justify-content:center;gap:8px;padding:0 12px;white-space:nowrap}";
+        const around = "html body{display:grid !important;grid-template-columns:minmax(0,1fr) var(--hardware-notch,0px) minmax(0,1fr) !important;grid-template-rows:100%;align-items:center;justify-content:stretch !important;gap:0 !important;padding:0 !important;overflow:hidden}html body>:not([data-notch-ear]){visibility:hidden !important}[data-notch-ear]{position:relative;box-sizing:border-box;display:flex;align-items:center;gap:8px;min-width:0;height:100%;overflow:hidden;white-space:nowrap}[data-notch-ear=leading]{grid-column:1;grid-row:1;justify-content:flex-end;padding:0 8px 0 12px}[data-notch-ear=trailing]{grid-column:3;grid-row:1;justify-content:flex-start;padding:0 12px 0 8px}";
+        const usesEars = () => housing > 1;
+        style.textContent = base + (usesEars() ? around : centered);
         document.documentElement.append(style);
+        let arranging = false;
+        const isContent = (node) => {
+          if (!(node instanceof Element) || node.hasAttribute("data-notch-ear")) return false;
+          const tag = node.tagName;
+          return tag !== "SCRIPT" && tag !== "STYLE" && tag !== "LINK";
+        };
+        const arrange = () => {
+          if (!usesEars() || arranging || !document.body) return;
+          arranging = true;
+          let leading = document.body.querySelector("[data-notch-ear=leading]");
+          let trailing = document.body.querySelector("[data-notch-ear=trailing]");
+          if (!leading) {
+            leading = document.createElement("div");
+            leading.setAttribute("data-notch-ear", "leading");
+            document.body.append(leading);
+          }
+          if (!trailing) {
+            trailing = document.createElement("div");
+            trailing.setAttribute("data-notch-ear", "trailing");
+            document.body.append(trailing);
+          }
+          const items = [...document.body.children].filter(isContent);
+          const mid = Math.ceil(items.length / 2);
+          items.forEach((node, index) => {
+            (index < mid ? leading : trailing).append(node);
+          });
+          arranging = false;
+        };
+        const park = () => {
+          if (!usesEars() || arranging || !document.body) return;
+          const stray = [...document.body.children].filter(isContent);
+          if (!stray.length) return;
+          const trailing = document.body.querySelector("[data-notch-ear=trailing]");
+          if (!trailing) {
+            arrange();
+            return;
+          }
+          arranging = true;
+          stray.forEach((node) => trailing.append(node));
+          arranging = false;
+        };
+        const ready = () => {
+          (document.head || document.documentElement).append(style);
+          arrange();
+          if (!document.body) return;
+          const observer = new MutationObserver(() => park());
+          observer.observe(document.body, { childList: true });
+        };
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", ready, { once: true });
+        else ready();
+        onHousing = (value) => {
+          const next = housingFrom(value);
+          if (next === housing) {
+            paint();
+            return;
+          }
+          housing = next;
+          paint();
+        };
       }
       const actionOf = (event) => {
         const node = event.target instanceof Element ? event.target.closest("[data-action]") : null;

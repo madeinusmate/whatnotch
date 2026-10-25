@@ -168,6 +168,9 @@ final class AppModel: NSObject {
         panel.onProgress = { [weak self] progress, settled in
             self?.publishOpen(progress, force: settled)
         }
+        panel.onScreenChange = { [weak self] in
+            self?.publishHousing()
+        }
         sidecar.onEvent = { [weak self] event in
             self?.handleSidecar(event)
         }
@@ -824,8 +827,9 @@ final class AppModel: NSObject {
         guard let data = try? JSONEncoder().encode(state),
               let json = String(data: data, encoding: .utf8) else { return }
         let notch = panel.notchHeight
+        let housing = String(format: "%.1f", panel.hardwareNotchWidth)
         webView.evaluateJavaScript(
-            "document.documentElement.style.setProperty('--notch','\(notch)px');window.shelf && window.shelf.apply(\(json))",
+            "document.documentElement.style.setProperty('--notch','\(notch)px');document.documentElement.style.setProperty('--hardware-notch','\(housing)px');window.shelf && window.shelf.apply(\(json));window.shelf && window.shelf.setHousing(\(housing))",
             completionHandler: nil
         )
         publishOpen(panel.openProgress, force: true)
@@ -1514,6 +1518,15 @@ final class AppModel: NSObject {
         push()
     }
 
+    private func publishHousing() {
+        guard pageReady else { return }
+        let housing = String(format: "%.1f", panel.hardwareNotchWidth)
+        webView.evaluateJavaScript(
+            "window.shelf && window.shelf.setHousing(\(housing))",
+            completionHandler: nil
+        )
+    }
+
     private func publishOpen(_ progress: CGFloat, force: Bool) {
         guard pageReady else { return }
         let value = min(1, max(0, (progress * 1000).rounded() / 1000))
@@ -1663,19 +1676,59 @@ struct AppPaths {
         try FileManager.default.createDirectory(at: widgets, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: dismissed, withIntermediateDirectories: true)
         let agents = workspace.appendingPathComponent("AGENTS.md")
-        if !FileManager.default.fileExists(atPath: agents.path) {
-            try FileManager.default.copyItem(at: template, to: agents)
-        } else if var text = try? String(contentsOf: agents, encoding: .utf8),
-                  text.hasPrefix("# Agentic Notch\n") {
-            let heading = text.startIndex..<text.index(text.startIndex, offsetBy: "# Agentic Notch".count)
-            text.replaceSubrange(heading, with: "# Whatnotch")
-            let previousIntro = "You are the agent that lives in the notch on this Mac."
-            let intro = "You are Whatnotch, the agent that lives in the notch on this Mac."
-            if let range = text.range(of: previousIntro) {
-                text.replaceSubrange(range, with: intro)
-            }
-            try? text.write(to: agents, atomically: true, encoding: .utf8)
+        try Self.syncAgentInstructions(template: template, destination: agents)
+        if let rulesTemplate = resources?.appendingPathComponent("whatnotch-agent.mdc") {
+            let rulesDir = workspace.appendingPathComponent(".cursor/rules", isDirectory: true)
+            try FileManager.default.createDirectory(at: rulesDir, withIntermediateDirectories: true)
+            let rulesDest = rulesDir.appendingPathComponent("whatnotch.mdc")
+            try Self.syncFileIfChanged(from: rulesTemplate, to: rulesDest)
         }
         return AppPaths(support: support, shelf: shelf, widgets: widgets, dismissed: dismissed, sidecarScript: script)
+    }
+
+    private static func agentSpecVersion(in text: String) -> Int {
+        let pattern = #"whatnotch-spec-version:\s*(\d+)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              match.numberOfRanges > 1,
+              let range = Range(match.range(at: 1), in: text),
+              let value = Int(text[range]) else {
+            return 0
+        }
+        return value
+    }
+
+    private static func syncAgentInstructions(template: URL, destination: URL) throws {
+        let manager = FileManager.default
+        let templateText = try String(contentsOf: template, encoding: .utf8)
+        let templateVersion = agentSpecVersion(in: templateText)
+        if !manager.fileExists(atPath: destination.path) {
+            try templateText.write(to: destination, atomically: true, encoding: .utf8)
+            return
+        }
+        guard let existing = try? String(contentsOf: destination, encoding: .utf8) else {
+            try templateText.write(to: destination, atomically: true, encoding: .utf8)
+            return
+        }
+        if agentSpecVersion(in: existing) < templateVersion {
+            try templateText.write(to: destination, atomically: true, encoding: .utf8)
+            return
+        }
+        guard existing.hasPrefix("# Agentic Notch\n") else { return }
+        var text = existing
+        let heading = text.startIndex..<text.index(text.startIndex, offsetBy: "# Agentic Notch".count)
+        text.replaceSubrange(heading, with: "# Whatnotch")
+        let previousIntro = "You are the agent that lives in the notch on this Mac."
+        let intro = "You are Whatnotch, the agent that lives in the notch on this Mac."
+        if let range = text.range(of: previousIntro) {
+            text.replaceSubrange(range, with: intro)
+        }
+        try text.write(to: destination, atomically: true, encoding: .utf8)
+    }
+
+    private static func syncFileIfChanged(from source: URL, to destination: URL) throws {
+        guard let incoming = try? Data(contentsOf: source) else { return }
+        if let current = try? Data(contentsOf: destination), current == incoming { return }
+        try incoming.write(to: destination, options: .atomic)
     }
 }

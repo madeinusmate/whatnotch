@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		085C1329119C72FAA1E8028E /* BridgeRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A43FAF290698ED0DF656623 /* BridgeRunner.swift */; };
+		7C4E9A1B2D8F4035A6E1C0D4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5F2B8D9E3A7C4012B4F6E8A1 /* Assets.xcassets */; };
 		0B7A7F886E5A48A8DE1D14B2 /* FrameSpring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C40E8FFBDE615CA1FD31B92 /* FrameSpring.swift */; };
 		19AC8ACACE59CCD090FDDBAF /* NotchSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F00232ED369E5CC1823AFD9 /* NotchSchemeHandler.swift */; };
 		532A8F230AFC042A1F73A24C /* SidecarClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B866A9FB5BB21F3B156DB5 /* SidecarClient.swift */; };
@@ -35,6 +36,7 @@
 		AAE171C9F520A01B4AEEDD87 /* Whatnotch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Whatnotch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB91C25CF309DAEC736C7339 /* NodeFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeFinder.swift; sourceTree = "<group>"; };
 		CFFD2F14398AB05D01D65B01 /* WidgetRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetRuntime.swift; sourceTree = "<group>"; };
+		5F2B8D9E3A7C4012B4F6E8A1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -61,6 +63,7 @@
 				48DB92B1375BFEA3C463286B /* NotchScreen.swift */,
 				A1B866A9FB5BB21F3B156DB5 /* SidecarClient.swift */,
 				CFFD2F14398AB05D01D65B01 /* WidgetRuntime.swift */,
+				5F2B8D9E3A7C4012B4F6E8A1 /* Assets.xcassets */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -81,6 +84,7 @@
 			buildConfigurationList = 3A4C9F0C12E16BBED6DC8889 /* Build configuration list for PBXNativeTarget "Whatnotch" */;
 			buildPhases = (
 				FC1EDD156B124800808BD961 /* Sources */,
+				B9E3F1A84C2D4567E8A0B1C2 /* Resources */,
 				686AFF18FD4DCD5C7AE7E366 /* Bundle sidecar */,
 			);
 			buildRules = (
@@ -146,9 +150,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"\ncd \"$SRCROOT/Sidecar\"\nif [ -f pnpm-lock.yaml ]; then\n  pnpm install --frozen-lockfile\nelse\n  pnpm install\nfi\npnpm build\nRES=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources\"\nDEST=\"$RES/Sidecar\"\nmkdir -p \"$DEST\" \"$RES/Shelf\"\nrsync -a --delete \\\n  --exclude src \\\n  --exclude tsconfig.json \\\n  \"$SRCROOT/Sidecar/\" \"$DEST/\"\nrsync -a --delete \"$SRCROOT/Shelf/\" \"$RES/Shelf/\"\ncp \"$SRCROOT/Workspace/AGENTS.md\" \"$RES/AGENTS.md\"\n";
+			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"\ncd \"$SRCROOT/Sidecar\"\nif [ -f pnpm-lock.yaml ]; then\n  pnpm install --frozen-lockfile\nelse\n  pnpm install\nfi\npnpm build\nRES=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Resources\"\nDEST=\"$RES/Sidecar\"\nmkdir -p \"$DEST\" \"$RES/Shelf\"\nrsync -a --delete \\\n  --exclude src \\\n  --exclude tsconfig.json \\\n  \"$SRCROOT/Sidecar/\" \"$DEST/\"\nrsync -a --delete \"$SRCROOT/Shelf/\" \"$RES/Shelf/\"\ncp \"$SRCROOT/Workspace/AGENTS.md\" \"$RES/AGENTS.md\"\ncp \"$SRCROOT/Workspace/.cursor/rules/whatnotch.mdc\" \"$RES/whatnotch-agent.mdc\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B9E3F1A84C2D4567E8A0B1C2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7C4E9A1B2D8F4035A6E1C0D4 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		FC1EDD156B124800808BD961 /* Sources */ = {

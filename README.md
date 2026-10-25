@@ -1,5 +1,9 @@
 # Whatnotch
 
+<p align="center">
+  <img src="docs/icon.jpg" alt="Whatnotch app icon" width="320" />
+</p>
+
 **A Cursor agent that lives in your MacBook notch** — chat from the shelf, ship small HTML widgets, and keep live state on the closed notch when you need it.
 
 **Whatnotch** is a menu-bar–style macOS app (no Dock icon) built for Macs with a camera housing notch.
@@ -52,7 +56,7 @@ Widgets are created under `workspace/widgets/<slug>/`. The agent instructions sh
 App/                 Swift macOS app — notch chrome, WebKit shelf, widget runtime, Keychain
 Shelf/               Shelf UI (HTML/CSS/JS) loaded in the main web view
 Sidecar/             TypeScript process — Cursor SDK, stdin/stdout protocol with the app
-Workspace/AGENTS.md  Default agent prompt (copied into the user workspace on first run)
+Workspace/AGENTS.md  Default agent prompt (synced into the user workspace; versioned via whatnotch-spec-version)
 project.yml          XcodeGen spec (optional regen; Whatnotch.xcodeproj is checked in)
 ```
 
@@ -99,7 +103,7 @@ Each widget is a small web surface plus optional background worker. The agent (a
 | `manifest.json` | Optional title and size (`width` / `height` in points) |
 | `worker.mjs` | Optional Node worker; emits JSON lines `{ "type": "state", "body": { ... } }` |
 | `compact.html` | Optional single-line UI when the notch is closed |
-| `compact` in manifest | Optional closed-notch width (168–320 pt) |
+| `compact` in manifest | Optional content width beside the camera housing (up to 320 pt) |
 
 Example bridge usage inside a widget page:
 

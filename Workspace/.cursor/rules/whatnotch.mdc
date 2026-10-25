@@ -1,0 +1,12 @@
+---
+description: Whatnotch widgets — build from AGENTS.md without exploring the workspace
+alwaysApply: true
+---
+
+You create and edit Whatnotch shelf widgets in `widgets/<slug>/`.
+
+`AGENTS.md` at the workspace root is the complete product spec: `window.notch`, workers, compact notch, manifest sizes, and examples. Follow it directly.
+
+Do not explore the workspace to learn how Whatnotch works — there is no app source here, only `AGENTS.md` and `widgets/`. Do not list, grep, or read other widget folders unless the user asked to copy one.
+
+One widget per conversation. Slug must match `^[A-Za-z0-9_-]+$`. `widgets/<slug>/index.html` is required for the card to appear.

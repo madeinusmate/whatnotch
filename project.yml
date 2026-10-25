@@ -26,6 +26,7 @@ targets:
         excludes:
           - Info.plist
           - Whatnotch.entitlements
+      - path: App/Assets.xcassets
     resources:
       - path: Shelf
       - path: Workspace/AGENTS.md
@@ -61,6 +62,7 @@ targets:
             "$SRCROOT/Sidecar/" "$DEST/"
           rsync -a --delete "$SRCROOT/Shelf/" "$RES/Shelf/"
           cp "$SRCROOT/Workspace/AGENTS.md" "$RES/AGENTS.md"
+          cp "$SRCROOT/Workspace/.cursor/rules/whatnotch.mdc" "$RES/whatnotch-agent.mdc"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.whatnotch.Whatnotch

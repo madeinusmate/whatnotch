@@ -28,7 +28,7 @@ Swift changes should compile with the **Whatnotch** scheme on macOS 14+. Avoid c
 
 - Describe user-visible behavior and include screenshots or screen recordings for notch/shelf UI changes when possible.
 - Do not commit API keys, `.env` files, or personal signing identities.
-- Update `Workspace/AGENTS.md` when agent-facing widget rules change.
+- Update `Workspace/AGENTS.md` (and bump `whatnotch-spec-version` in that file) when agent-facing widget rules change. Keep `Workspace/.cursor/rules/whatnotch.mdc` aligned if the “do not explore” workflow changes.
 
 ## Security
 

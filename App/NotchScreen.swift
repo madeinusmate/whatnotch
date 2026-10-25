@@ -16,7 +16,7 @@ enum NotchScreen {
     }
 
     static func collapsedFrame(on screen: NSScreen) -> CGRect {
-        if let notch = notchRect(on: screen), notch.width >= 40, notch.height >= 20 {
+        if let notch = hardwareNotch(on: screen) {
             return notch
         }
         let size = fallbackPill
@@ -26,6 +26,14 @@ enum NotchScreen {
             width: size.width,
             height: size.height
         )
+    }
+
+    /// The camera housing. Nil when this display has no notch the system will report.
+    static func hardwareNotch(on screen: NSScreen) -> CGRect? {
+        guard let notch = notchRect(on: screen), notch.width >= 40, notch.height >= 20 else {
+            return nil
+        }
+        return notch
     }
 
     static func openFrame(on screen: NSScreen, collapsed: CGRect, height: CGFloat) -> CGRect {
@@ -53,7 +61,7 @@ enum NotchScreen {
     }
 
     private static func hasNotch(_ screen: NSScreen) -> Bool {
-        notchRect(on: screen) != nil
+        hardwareNotch(on: screen) != nil
     }
 
     private static func notchRect(on screen: NSScreen) -> CGRect? {
