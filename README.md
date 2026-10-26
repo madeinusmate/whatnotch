@@ -1,34 +1,77 @@
 # Whatnotch
 
 <p align="center">
-  <img src="docs/icon.jpg" alt="Whatnotch app icon" width="320" />
+  <img src="docs/icon.jpg" alt="Whatnotch app icon" width="176" />
 </p>
 
-**A coding agent that lives in your MacBook notch** — chat from the shelf, ship small HTML widgets, and keep live state on the closed notch when you need it.
+<p align="center">
+  <strong>Your coding agent, at the top of your MacBook.</strong><br />
+  Build tiny, useful HTML widgets from a shelf that drops out of the notch.
+</p>
 
-**Whatnotch** is a menu-bar–style macOS app (no Dock icon) built for Macs with a camera housing notch.
+<p align="center">
+  <a href="https://github.com/madeinusmate/whatnotch/stargazers"><img src="https://img.shields.io/github/stars/madeinusmate/whatnotch?style=for-the-badge&logo=github&label=Stars" alt="GitHub stars" /></a>
+  <a href="https://github.com/madeinusmate/whatnotch/issues"><img src="https://img.shields.io/github/issues/madeinusmate/whatnotch?style=for-the-badge&logo=github&label=Issues" alt="Open GitHub issues" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/madeinusmate/whatnotch?style=for-the-badge&label=License" alt="MIT License" /></a>
+  <img src="https://img.shields.io/badge/platform-macOS%2014%2B-black?style=for-the-badge&logo=apple" alt="macOS 14 or later" />
+</p>
 
-## What it does
+<p align="center">
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#what-you-can-build">What you can build</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#contributing">Contributing</a>
+</p>
 
-- **Notch-native UI** — The shelf drops from the black notch; widgets size to their content and respect reduced motion.
-- **Choose your coding agent** — Cursor uses its SDK and API key; Claude Code and Codex use the authenticated local CLI already installed on your Mac. Provider-native sessions are kept separate.
-- **Widget workspace** — Ask for a timer, a status strip, or a tiny dashboard; the agent creates a folder under your user workspace with `index.html`, optional `worker.mjs`, and optional `compact.html` for the closed notch.
-- **Safe widget bridge** — Widgets run in isolated `widget://` pages with a narrow `window.notch` API (shell, files, HTTP). No access to the API key or sidecar.
+Whatnotch is an open-source, menu-bar–only macOS app for notched MacBooks. It gives your coding agent a natural home in the camera housing: open the shelf, describe a little tool, and get a live widget you can keep close at hand.
 
-## Requirements
+Choose Cursor, Claude Code, or Codex. Widgets live in a local workspace and run behind a deliberately small bridge—no direct access to the agent sidecar or its credentials.
 
-| | |
+> [!NOTE]
+> Whatnotch is designed for MacBooks with a camera notch. It needs macOS 14 (Sonoma) or later.
+
+## What you can build
+
+| In the shelf | On the closed notch |
 | --- | --- |
-| **macOS** | 14.0+ (Sonoma or later) |
-| **Hardware** | MacBook with a notch (the UI is built around the camera housing) |
-| **Node.js** | 22.13+ (`node` on your `PATH` or Homebrew paths the app checks) |
-| **pnpm** | 8.x (used by the bundled sidecar build script) |
-| **Xcode** | Recent Xcode with the macOS 14 SDK |
-| **Cursor** | API key from your Cursor account (entered once in Settings) |
-| **Claude Code** *(optional)* | Installed and signed in (`claude`) |
-| **Codex / ChatGPT** *(optional)* | Codex CLI installed and signed in (bundled with the ChatGPT macOS app when available) |
+| ![Whatnotch app icon](docs/icon.jpg) | **Status at a glance.** A timer, a build state, an event countdown, or another passive, live readout can occupy the space beside the camera housing. |
+| **Chat your way to a tool.** Ask for a Pomodoro timer, a status strip, a small dashboard, or a bespoke utility. The agent writes a self-contained widget for you. | **Widgets with a pulse.** An optional Node worker sends state updates to both the shelf card and its compact notch view. |
 
-## Quick start
+Every widget is just a small folder:
+
+```text
+widgets/my-widget/
+├── index.html       # Shelf card (required)
+├── manifest.json    # Title and dimensions (optional)
+├── worker.mjs       # Background state source (optional)
+└── compact.html     # Closed-notch status row (optional)
+```
+
+The result is portable, easy to inspect, and easy to modify. You can build widgets with the agent, by hand, or both.
+
+## Highlights
+
+- **Notch-native by design** — a shelf drops from the black camera housing; widgets size to their content and respect Reduced Motion.
+- **Cursor-powered** — the bundled Node sidecar talks to the [Cursor Agent SDK](https://www.npmjs.com/package/@cursor/sdk) using a key you add once in Settings.
+- **A real local workspace** — each widget gets its own HTML/CSS/JS files under Application Support, not an opaque database.
+- **Live compact states** — widgets can show a concise, read-only status on either side of the closed notch.
+- **Purposefully narrow bridge** — widget pages can use carefully scoped files, shell commands, and HTTP—not your API key or the sidecar.
+- **No Dock clutter** — Whatnotch stays where it belongs: in the menu-bar/notch experience.
+
+## Getting started
+
+### Requirements
+
+| Requirement | Details |
+| --- | --- |
+| macOS | 14.0+ (Sonoma or later) |
+| Hardware | A MacBook with a camera housing notch |
+| Xcode | Recent Xcode with the macOS 14 SDK |
+| Node.js | 22.13+ available on `PATH` (Homebrew locations are also checked) |
+| pnpm | 8.x, used to build the bundled sidecar |
+| Cursor | An API key, entered in Whatnotch Settings |
+| Claude Code *(optional)* | Installed and signed in (`claude`) |
+| Codex / ChatGPT *(optional)* | Codex CLI installed and signed in (bundled with the ChatGPT macOS app when available) |
 
 ### Run from source
 
@@ -38,87 +81,68 @@ cd whatnotch
 open Whatnotch.xcodeproj
 ```
 
-In Xcode, select the **Whatnotch** scheme and **Run** (⌘R). The first build installs Sidecar dependencies with `pnpm` and copies `Shelf/`, `Sidecar/dist/`, and `Workspace/AGENTS.md` into the app bundle.
+In Xcode, select the **Whatnotch** scheme and press **Run** (`⌘R`). The first build installs the sidecar dependencies, compiles it, and bundles the shelf plus the widget guide into the application.
 
-### First launch
+### Create your first widget
 
-1. Move the pointer to the top of the screen to open the shelf (or use the compact notch affordance when a widget is live).
-2. Open **Settings** (gear), choose Cursor, Claude Code, or Codex (ChatGPT), then complete that provider’s sign-in.
-3. Pick a model where available, then describe a widget — for example, “a pomodoro timer with a compact countdown on the notch.”
+1. Move the pointer to the top of the screen to open the shelf.
+2. Open **Settings**, choose Cursor, Claude Code, or Codex (ChatGPT), then complete that provider’s sign-in.
+3. Pick a model where available and ask for something useful—for example, _“Make a Pomodoro timer with a compact countdown in the notch.”_
 
-Your agent workspace lives at:
+Your local workspace is created at:
 
-`~/Library/Application Support/Whatnotch/workspace/`
-
-Widgets are created under `workspace/widgets/<slug>/`. The agent instructions shipped with the app are mirrored in [`Workspace/AGENTS.md`](./Workspace/AGENTS.md).
-
-## Repository layout
-
-```
-App/                 Swift macOS app — notch chrome, WebKit shelf, widget runtime, Keychain
-Shelf/               Shelf UI (HTML/CSS/JS) loaded in the main web view
-Sidecar/             TypeScript process — Cursor SDK, stdin/stdout protocol with the app
-Workspace/AGENTS.md  Default agent prompt (synced into the user workspace; versioned via whatnotch-spec-version)
-project.yml          XcodeGen spec (optional regen; Whatnotch.xcodeproj is checked in)
+```text
+~/Library/Application Support/Whatnotch/workspace/
 ```
 
-## Architecture
+Widgets are stored in `workspace/widgets/<slug>/`. The full widget contract is available in [Workspace/AGENTS.md](./Workspace/AGENTS.md).
+
+## How it works
 
 ```mermaid
 flowchart TB
-  subgraph macOS["Whatnotch.app"]
-    NP[NotchPanel + WebKit]
-    WR[WidgetRuntime]
-    BR[BridgeRunner]
-    NP --> WR
-    WR --> BR
-    NP --> SC[SidecarClient]
+  subgraph app["Whatnotch.app"]
+    shelf["Notch shelf · WebKit"]
+    runtime["Widget runtime"]
+    bridge["Safe widget bridge"]
+    client["Sidecar client"]
+    shelf --> runtime --> bridge
+    shelf --> client
   end
-  subgraph node["Sidecar (Node)"]
-    SDK["@cursor/sdk"]
-    SC <-->|"AGN\\t JSON lines"| SDK
+  subgraph sidecar["Local Node sidecar"]
+    agent["Cursor SDK or local provider CLI"]
   end
-  subgraph disk["User workspace"]
-    W["widgets/&lt;slug&gt;/"]
-    AG[AGENTS.md]
+  subgraph workspace["Your local workspace"]
+    guide["AGENTS.md"]
+    widgets["widgets/&lt;slug&gt;/"]
   end
-  SDK --> AG
-  SDK --> W
-  WR --> W
-  NP -->|"widget://"| W
+  client <--> agent
+  agent --> guide
+  agent --> widgets
+  runtime --> widgets
 ```
 
-| Layer | Role |
+| Piece | Responsibility |
 | --- | --- |
-| **Shelf** | Chat, settings, widget shelf, session list |
-| **Sidecar** | Long-lived Node process; streams agent events; redacts API keys in logs |
-| **Widget runtime** | Watches `widgets/`, runs optional `worker.mjs`, forwards `notch-state` to pages |
-| **Bridge** | Implements `window.notch` with a scrubbed environment (`PATH`, `HOME`, `USER`, `TMPDIR`, `LANG`) |
+| **Shelf** | Chat, settings, sessions, and the widget cards you open. |
+| **Sidecar** | A long-lived local Node process that streams provider events and redacts API keys from logs. |
+| **Widget runtime** | Watches `widgets/`, runs optional `worker.mjs` files, and distributes live state. |
+| **Bridge** | Exposes the constrained `window.notch` API with a scrubbed environment. |
 
-## Building widgets
+## Widget development
 
-Each widget is a small web surface plus optional background worker. The agent (and human contributors) should follow [`Workspace/AGENTS.md`](./Workspace/AGENTS.md). In short:
-
-| File | Purpose |
-| --- | --- |
-| `index.html` | Main card in the shelf |
-| `manifest.json` | Optional title and size (`width` / `height` in points) |
-| `worker.mjs` | Optional Node worker; emits JSON lines `{ "type": "state", "body": { ... } }` |
-| `compact.html` | Optional single-line UI when the notch is closed |
-| `compact` in manifest | Optional content width beside the camera housing (up to 320 pt) |
-
-Example bridge usage inside a widget page:
+The agent and human contributors use the same widget rules. A shelf page can use the injected bridge like this:
 
 ```js
 const files = await window.notch.list(".");
-const out = await window.notch.shell("date -u +%H:%M");
+const time = await window.notch.shell("date -u +%H:%M");
 ```
 
-Workers and widgets **cannot** read the Cursor API key or call the sidecar directly.
+An optional `worker.mjs` can emit newline-delimited state, and `index.html` plus `compact.html` receive it through `notch-state` events. Read the [widget guide](./Workspace/AGENTS.md) before writing a widget; it covers dimensions, compact-notch layout, worker messages, and the bridge’s limits.
 
-## Developing the app
+## Development
 
-### Sidecar only
+### Build the sidecar
 
 ```bash
 cd Sidecar
@@ -126,29 +150,46 @@ pnpm install
 pnpm build
 ```
 
-### Regenerate the Xcode project (optional)
+Rebuild the **Whatnotch** Xcode scheme after sidecar changes so the post-build phase bundles the new output.
 
-If you change `project.yml`, install [XcodeGen](https://github.com/yonaskolb/XcodeGen) and run:
+### Regenerate the project (optional)
+
+The checked-in Xcode project is generated from `project.yml`. If you edit that spec, install [XcodeGen](https://github.com/yonaskolb/XcodeGen) and run:
 
 ```bash
 xcodegen generate
 ```
 
-### Code signing
+## Security and privacy
 
-`project.yml` may reference a local development team for convenience. Before you distribute builds, use your own **Signing & Capabilities** settings in Xcode or adjust `project.yml` for your team.
+- Cursor API keys are stored in the macOS Keychain under `app.whatnotch.Whatnotch`; Claude Code and Codex can use their existing local authenticated sessions.
+- The Swift host passes a key to the local sidecar only over a private stdin protocol; widget pages never receive it.
+- Only `widget://` pages receive `window.notch`.
+- The widget bridge allows limited HTTP(S), files, and shell access with a scrubbed environment and output caps.
 
-## Security model
+Please do **not** open public issues for key-handling bugs or sandbox escapes. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the private reporting path.
 
-- **API keys** live in the Keychain (`app.whatnotch.Whatnotch`), one entry per provider; the sidecar receives a key only over a private stdin protocol from the Swift host. Claude Code and Codex may instead use their own local authenticated sessions.
-- **Widget isolation** uses custom URL schemes and message handlers; only `widget://` pages receive `window.notch`.
-- **Network and shell** from widgets are intentionally limited — HTTP(S) only, commands run with a minimal environment and output caps.
+## Repository map
 
-Report security issues privately (see [CONTRIBUTING](./CONTRIBUTING.md)); do not open public issues for key-handling or sandbox escapes.
+```text
+App/                 Swift macOS app: notch chrome, WebKit, Keychain, widget runtime
+Shelf/               Chat shelf HTML, CSS, and JavaScript
+Sidecar/             TypeScript Cursor SDK process and host protocol
+Workspace/AGENTS.md  Versioned guide copied into each user workspace
+tests/               Contract tests for compact-notch behavior
+project.yml          XcodeGen project specification
+```
 
-## Related
+## Contributing
 
-- [Cursor](https://cursor.com) — editor and agent platform this app integrates with
-- [`@cursor/sdk`](https://www.npmjs.com/package/@cursor/sdk) — Agent SDK used by the sidecar
+Issues, widget ideas, bug reports, documentation improvements, and pull requests are all welcome. For substantial bridge, sandbox, or sidecar protocol changes, please open an issue first so we can align on the design.
 
-[Agent guide](./Workspace/AGENTS.md) · [CONTRIBUTING](./CONTRIBUTING.md) · [MIT](./LICENSE)
+Please keep pull requests focused, do not commit API keys or signing identities, and include a screenshot or recording for shelf/notch UI changes when practical. Full details are in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## Built with
+
+[Swift](https://www.swift.org/) · [WebKit](https://webkit.org/) · [TypeScript](https://www.typescriptlang.org/) · [Cursor Agent SDK](https://www.npmjs.com/package/@cursor/sdk) · [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+
+## License
+
+Whatnotch is released under the [MIT License](./LICENSE).
