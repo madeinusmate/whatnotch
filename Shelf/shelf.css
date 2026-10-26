@@ -947,7 +947,7 @@ textarea:disabled { opacity: 0.45; }
 #widget-list { display: flex; flex-direction: column; gap: 6px; }
 
 #widget-list.notchable .widget-row {
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: 1fr auto auto auto auto;
 }
 
 .widget-row {
@@ -988,9 +988,14 @@ textarea:disabled { opacity: 0.45; }
 
 .widget-row .remove { color: rgba(255, 140, 140, 0.95); }
 
-.widget-row .pin.on {
+.widget-row .pin.on,
+.widget-row .compact.on {
   background: white;
   color: black;
+}
+
+.widget-row .compact.off {
+  color: rgba(255, 255, 255, 0.52);
 }
 
 .library-empty {

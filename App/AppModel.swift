@@ -23,6 +23,7 @@ struct ShelfWidget: Codable, Equatable {
     var row: Int
     var slot: Int
     var hasCompact: Bool
+    var compactDisabled: Bool
     var compactLeadingWidth: Int
     var compactTrailingWidth: Int
 }
@@ -130,12 +131,14 @@ final class AppModel: NSObject {
     private let providerDefaultsKey = "agentProvider"
     private let titlesDefaultsKey = "showWidgetTitles"
     private let pinDefaultsKey = "pinnedCompactId"
+    private let compactDisabledDefaultsKey = "compactDisabledWidgetIds"
     private let maxWidgetRows = 3
     // 28px drop lane plus the 8px gap beneath the last row.
     private let reorderLane: CGFloat = 36
     private let skeletonHeight: CGFloat = 112
     private var laidOutHeight: CGFloat = -1
     private var pinnedCompactId: String?
+    private var compactDisabledIds: Set<String> = []
     private var focusedWidgetId: String?
     private var compactLive: [String: TimeInterval] = [:]
     private var compactMeasured: [String: CompactLayout] = [:]
@@ -209,6 +212,7 @@ final class AppModel: NSObject {
         }
         let storedPin = UserDefaults.standard.string(forKey: pinDefaultsKey) ?? ""
         pinnedCompactId = storedPin.isEmpty ? nil : storedPin
+        compactDisabledIds = Set(UserDefaults.standard.stringArray(forKey: compactDisabledDefaultsKey) ?? [])
         hasKey = configured
         auth = provider == "cursor"
             ? ShelfAuth(checked: hasKey, connected: hasKey, message: hasKey ? "API key saved" : "Enter your Cursor API key")
@@ -345,6 +349,10 @@ final class AppModel: NSObject {
             setShowTitles(body["show"] as? Bool ?? true)
         case "pinCompact":
             if let id = body["id"] as? String { pinCompact(id) }
+        case "setCompactDisabled":
+            if let id = body["id"] as? String {
+                setCompactDisabled(id, disabled: body["disabled"] as? Bool ?? false)
+            }
         case "openCompact":
             if let id = body["id"] as? String { openFromCompact(id) }
         case "compactAction":
@@ -1251,6 +1259,8 @@ final class AppModel: NSObject {
             activeSessionId = nil
         }
         hiddenIds.remove(id)
+        compactDisabledIds.remove(id)
+        UserDefaults.standard.set(compactDisabledIds.sorted(), forKey: compactDisabledDefaultsKey)
         persistHidden()
         persistSessions()
         mode = "settings"
@@ -1437,11 +1447,17 @@ final class AppModel: NSObject {
                 row: place.row,
                 slot: place.slot,
                 hasCompact: record.hasCompact,
+                compactDisabled: compactDisabledIds.contains(record.id),
                 compactLeadingWidth: record.compactLeadingWidth,
                 compactTrailingWidth: record.compactTrailingWidth
             )
         }
         let ids = Set(next.map(\.id))
+        let knownDisabled = compactDisabledIds.intersection(ids)
+        if knownDisabled != compactDisabledIds {
+            compactDisabledIds = knownDisabled
+            UserDefaults.standard.set(compactDisabledIds.sorted(), forKey: compactDisabledDefaultsKey)
+        }
         let staleFields = widgetFields.keys.filter { !ids.contains($0) }
         if !staleFields.isEmpty {
             staleFields.forEach { widgetFields.removeValue(forKey: $0) }
@@ -1513,12 +1529,12 @@ final class AppModel: NSObject {
     private var activeCompactId: String? {
         if let pinnedCompactId,
            let widget = widgets.first(where: { $0.id == pinnedCompactId }),
-           widget.hasCompact, !widget.hidden {
+           widget.hasCompact, !widget.compactDisabled, !widget.hidden {
             return pinnedCompactId
         }
         let live = compactLive.filter { id, _ in
             guard let widget = widgets.first(where: { $0.id == id }) else { return false }
-            return widget.hasCompact && !widget.hidden
+            return widget.hasCompact && !widget.compactDisabled && !widget.hidden
         }
         return live.max { $0.value < $1.value }?.key
     }
@@ -1537,7 +1553,7 @@ final class AppModel: NSObject {
     private func syncCompact() {
         if let pinnedCompactId {
             let widget = widgets.first { $0.id == pinnedCompactId }
-            if widget == nil || widget?.hasCompact != true {
+            if widget == nil || widget?.hasCompact != true || widget?.compactDisabled == true {
                 self.pinnedCompactId = nil
                 UserDefaults.standard.removeObject(forKey: pinDefaultsKey)
             }
@@ -1561,7 +1577,7 @@ final class AppModel: NSObject {
     }
 
     private func noteCompactSize(id: String, leading: Double, trailing: Double) {
-        guard let widget = widgets.first(where: { $0.id == id && $0.hasCompact && !$0.hidden }) else { return }
+        guard let widget = widgets.first(where: { $0.id == id && $0.hasCompact && !$0.compactDisabled && !$0.hidden }) else { return }
         let layout = CompactLayout(
             leadingWidth: min(CGFloat(widget.compactLeadingWidth), max(0, CGFloat(leading))),
             trailingWidth: min(CGFloat(widget.compactTrailingWidth), max(0, CGFloat(trailing)))
@@ -1572,7 +1588,7 @@ final class AppModel: NSObject {
     }
 
     private func pinCompact(_ id: String) {
-        guard let widget = widgets.first(where: { $0.id == id }), widget.hasCompact, !widget.hidden else {
+        guard let widget = widgets.first(where: { $0.id == id }), widget.hasCompact, !widget.compactDisabled, !widget.hidden else {
             push()
             return
         }
@@ -1582,6 +1598,26 @@ final class AppModel: NSObject {
         } else {
             pinnedCompactId = id
             UserDefaults.standard.set(id, forKey: pinDefaultsKey)
+        }
+        syncCompact()
+        push()
+    }
+
+    private func setCompactDisabled(_ id: String, disabled: Bool) {
+        guard widgets.contains(where: { $0.id == id && $0.hasCompact }) else {
+            push()
+            return
+        }
+        if disabled {
+            compactDisabledIds.insert(id)
+        } else {
+            compactDisabledIds.remove(id)
+        }
+        UserDefaults.standard.set(compactDisabledIds.sorted(), forKey: compactDisabledDefaultsKey)
+        widgets = widgets.map { widget in
+            var copy = widget
+            if copy.id == id { copy.compactDisabled = disabled }
+            return copy
         }
         syncCompact()
         push()
@@ -1715,7 +1751,7 @@ final class AppModel: NSObject {
     private func migratePreferences() {
         let previousName = "app.agenticnotch.AgenticNotch"
         guard let previous = UserDefaults.standard.persistentDomain(forName: previousName) else { return }
-        let keys = [modelDefaultsKey, titlesDefaultsKey, pinDefaultsKey]
+        let keys = [modelDefaultsKey, titlesDefaultsKey, pinDefaultsKey, compactDisabledDefaultsKey]
         for key in keys where UserDefaults.standard.object(forKey: key) == nil {
             if let value = previous[key] {
                 UserDefaults.standard.set(value, forKey: key)

@@ -1089,7 +1089,7 @@ const renderCompact = (id, widgets) => {
 };
 
 const renderLibrary = (widgets, pinnedId) => {
-  const signature = `${pinnedId}|${widgets.map((widget) => `${widget.id}:${widget.title}:${widget.hidden}:${widget.hasCompact}`).join("|")}`;
+  const signature = `${pinnedId}|${widgets.map((widget) => `${widget.id}:${widget.title}:${widget.hidden}:${widget.hasCompact}:${widget.compactDisabled}`).join("|")}`;
   if (signature === librarySignature) {
     listEl.querySelectorAll("input[data-rename]").forEach((input) => {
       if (document.activeElement === input) return;
@@ -1141,7 +1141,7 @@ const renderLibrary = (widgets, pinnedId) => {
     pin.type = "button";
     pin.className = "pin";
     pin.textContent = "Notch";
-    if (widget.hasCompact && !widget.hidden) {
+    if (widget.hasCompact && !widget.compactDisabled && !widget.hidden) {
       pin.classList.toggle("on", widget.id === pinnedId);
       pin.setAttribute("aria-label", widget.id === pinnedId ? "Unpin from the notch" : "Pin to the notch");
       pin.addEventListener("click", () => post({ type: "pinCompact", id: widget.id }));
@@ -1149,6 +1149,22 @@ const renderLibrary = (widgets, pinnedId) => {
       pin.disabled = true;
       pin.style.visibility = "hidden";
       pin.tabIndex = -1;
+    }
+    const compact = document.createElement("button");
+    compact.type = "button";
+    compact.className = "compact";
+    compact.textContent = "Compact";
+    if (widget.hasCompact) {
+      const enabled = !widget.compactDisabled;
+      compact.classList.toggle("on", enabled);
+      compact.classList.toggle("off", !enabled);
+      compact.setAttribute("aria-label", enabled ? "Disable compact view" : "Enable compact view");
+      compact.setAttribute("aria-pressed", String(enabled));
+      compact.addEventListener("click", () => post({ type: "setCompactDisabled", id: widget.id, disabled: enabled }));
+    } else {
+      compact.disabled = true;
+      compact.style.visibility = "hidden";
+      compact.tabIndex = -1;
     }
     const visibility = document.createElement("input");
     visibility.type = "checkbox";
@@ -1164,7 +1180,7 @@ const renderLibrary = (widgets, pinnedId) => {
     remove.textContent = "Delete";
     remove.addEventListener("click", () => post({ type: "confirmDelete", id: widget.id }));
     row.append(title);
-    if (listEl.classList.contains("notchable")) row.append(pin);
+    if (listEl.classList.contains("notchable")) row.append(pin, compact);
     row.append(visibility, remove);
     listEl.append(row);
   });
