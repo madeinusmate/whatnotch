@@ -1,6 +1,11 @@
 import AppKit
 import QuartzCore
 
+struct CompactLayout: Equatable {
+    let leadingWidth: CGFloat
+    let trailingWidth: CGFloat
+}
+
 final class NotchChromeView: NSView {
     let webView: NSView
     private let wideHalo = CALayer()
@@ -174,12 +179,11 @@ final class NotchPanel: NSPanel {
     private var collapsedFrame = CGRect.zero
     private var openFrame = CGRect.zero
     private var openHeight: CGFloat = 148
-    /// Width of the compact content that sits beside the camera housing.
-    /// Nil keeps the hardware notch empty.
-    private var compactWidth: CGFloat?
-    /// Cap on that content width. The housing is added in the middle, so the
-    /// pill itself can be wider than this.
-    private let maxCompactWidth: CGFloat = 320
+    /// Requested visible space on each side of the camera housing. Nil keeps
+    /// the hardware notch empty.
+    private var compactLayout: CompactLayout?
+    private let maxCompactSideWidth: CGFloat = 160
+    private let maxCompactTotalWidth: CGFloat = 320
     private var expanded = false
     private var lastInside = false
     private var openCommitted = false
@@ -263,9 +267,9 @@ final class NotchPanel: NSPanel {
         spring.progress(collapsedHeight: collapsedFrame.height, openHeight: openFrame.height)
     }
 
-    func setCompactWidth(_ width: CGFloat?) {
-        guard width != compactWidth else { return }
-        compactWidth = width
+    func setCompactLayout(_ layout: CompactLayout?) {
+        guard layout != compactLayout else { return }
+        compactLayout = layout
         guard !expanded else {
             ensureLink()
             return
@@ -519,35 +523,40 @@ final class NotchPanel: NSPanel {
         }
     }
 
-    /// Closed pill. Compact content is laid out beside the camera housing, so
-    /// the requested width is added to the housing instead of drawn across it.
-    /// The pill stays centered on the housing; if it cannot fit, it shrinks
-    /// before it slides off the notch.
+    /// Closed pill. Each compact side grows independently from its matching
+    /// hardware-notch edge, never through the camera housing. The request is
+    /// capped at 160pt per side / 320pt total and then constrained to screen.
     private var restFrame: CGRect {
-        guard let requested = compactWidth else { return collapsedFrame }
+        guard let requested = compactLayout else { return collapsedFrame }
         let collapsed = collapsedFrame
-        let housing = hardwareNotchWidth
-        let content = min(maxCompactWidth, max(0, requested))
-        var width = housing > 1 ? housing + content : min(maxCompactWidth, max(collapsed.width, requested))
         let screen = NotchScreen.host().frame.insetBy(dx: 8, dy: 0)
-        let side = min(collapsed.midX - screen.minX, screen.maxX - collapsed.midX)
-        if side > 1 { width = min(width, side * 2) }
-        width = max(width, collapsed.width)
-        var frame = CGRect(
-            x: collapsed.midX - width / 2,
+        var leading = min(maxCompactSideWidth, max(0, requested.leadingWidth))
+        var trailing = min(maxCompactSideWidth, max(0, requested.trailingWidth))
+        let total = leading + trailing
+        if total > maxCompactTotalWidth {
+            let scale = maxCompactTotalWidth / total
+            leading *= scale
+            trailing *= scale
+        }
+        leading = min(leading, max(0, collapsed.minX - screen.minX))
+        trailing = min(trailing, max(0, screen.maxX - collapsed.maxX))
+        return CGRect(
+            x: collapsed.minX - leading,
             y: collapsed.maxY - collapsed.height,
-            width: width,
+            width: collapsed.width + leading + trailing,
             height: collapsed.height
         )
-        if frame.minX < screen.minX { frame.origin.x = screen.minX }
-        if frame.maxX > screen.maxX { frame.origin.x = screen.maxX - frame.width }
-        return frame
     }
 
     private func hoverFrame() -> CGRect {
         let base = restFrame
-        let width = base.width * hoverScale
         let height = base.height * hoverScale
+        // A compact frame can be intentionally asymmetric around the housing.
+        // Scaling its width around the frame midpoint moves the iframe's camera
+        // column away from the physical notch, which puts status content under
+        // the camera during hover. Preserve the horizontal frame; the vertical
+        // swell is enough hover feedback and keeps both ears registered.
+        let width = compactLayout == nil ? base.width * hoverScale : base.width
         return CGRect(
             x: base.midX - width / 2,
             y: base.maxY - height,
@@ -583,7 +592,7 @@ final class NotchPanel: NSPanel {
             collapsedHeight: collapsedFrame.height,
             openHeight: openFrame.height
         )
-        let showContent = compactWidth != nil || progress > 0.42
+        let showContent = compactLayout != nil || progress > 0.42
         spring.setOpacityTarget(showContent ? 1 : 0, reduceMotion: reduceMotion, now: now)
         let halo = haloStrength(height: spring.height, open: progress)
         spring.step(dt: dt, reduceMotion: reduceMotion, now: now)

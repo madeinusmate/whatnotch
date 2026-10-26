@@ -7,7 +7,8 @@ struct WidgetRecord: Equatable {
     var height: Int
     var revision: String
     var hasCompact: Bool
-    var compactWidth: Int
+    var compactLeadingWidth: Int
+    var compactTrailingWidth: Int
 }
 
 enum WidgetBridge {
@@ -26,6 +27,7 @@ enum WidgetBridge {
       };
       window.__notchState = deliver;
       let onHousing = () => {};
+      let reportCompactSize = () => {};
       window.addEventListener("message", (event) => {
         if (!event.data || event.data.source !== "notch-host") return;
         if (event.data.type === "housing") {
@@ -33,6 +35,7 @@ enum WidgetBridge {
           return;
         }
         deliver(event.data.body);
+        reportCompactSize();
       });
       if (location.host !== "widget") return;
       const call = (method, args) => new Promise((resolve, reject) => {
@@ -58,17 +61,44 @@ enum WidgetBridge {
         const style = document.createElement("style");
         const housingFrom = (value) => Math.max(0, Number(value) || 0);
         let housing = housingFrom(new URLSearchParams(location.search).get("housing"));
+        const compactWidth = (name) => Math.max(0, Number(new URLSearchParams(location.search).get(name)) || 0);
+        const leadingWidth = compactWidth("leading");
+        const trailingWidth = compactWidth("trailing");
         const paint = () => {
           document.documentElement.style.setProperty("--hardware-notch", housing + "px");
+          document.documentElement.style.setProperty("--compact-leading", leadingWidth + "px");
+          document.documentElement.style.setProperty("--compact-trailing", trailingWidth + "px");
         };
         paint();
         const base = "html,body{margin:0;height:100%;background:transparent;color:rgba(255,255,255,.92);font:13px/1 ui-sans-serif,system-ui,sans-serif;overflow:hidden}";
         const centered = "body{display:flex;align-items:center;justify-content:center;gap:8px;padding:0 12px;white-space:nowrap}";
-        const around = "html body{display:grid !important;grid-template-columns:minmax(0,1fr) var(--hardware-notch,0px) minmax(0,1fr) !important;grid-template-rows:100%;align-items:center;justify-content:stretch !important;gap:0 !important;padding:0 !important;overflow:hidden}html body>:not([data-notch-ear]){visibility:hidden !important}[data-notch-ear]{position:relative;box-sizing:border-box;display:flex;align-items:center;gap:8px;min-width:0;height:100%;overflow:hidden;white-space:nowrap}[data-notch-ear=leading]{grid-column:1;grid-row:1;justify-content:flex-end;padding:0 8px 0 12px}[data-notch-ear=trailing]{grid-column:3;grid-row:1;justify-content:flex-start;padding:0 12px 0 8px}";
+        // Each ear is a layout *and paint* containment boundary. Generated compact
+        // pages commonly use a full-width, fixed-position root; without containment
+        // that root is positioned against the iframe and paints across the camera.
+        const around = "html body{display:grid !important;grid-template-columns:var(--compact-leading,0px) var(--hardware-notch,0px) var(--compact-trailing,0px) !important;grid-template-rows:100%;align-items:center;justify-content:stretch !important;gap:0 !important;padding:0 !important;overflow:hidden}html body>:not([data-notch-ear]){visibility:hidden !important}[data-notch-ear]{position:relative;box-sizing:border-box;display:flex;align-items:center;gap:8px;min-width:0;height:100%;overflow:hidden;white-space:nowrap;contain:layout paint;isolation:isolate;transform:translateZ(0)}[data-notch-ear] *{max-width:100% !important}[data-notch-ear] :is(button,input,select,textarea,a,[role=button],[data-action]){display:none !important}[data-notch-ear=leading]{grid-column:1;grid-row:1;justify-content:flex-end;padding:0 8px 0 12px}[data-notch-ear=trailing]{grid-column:3;grid-row:1;justify-content:flex-start;padding:0 12px 0 8px}";
         const usesEars = () => housing > 1;
         style.textContent = base + (usesEars() ? around : centered);
         document.documentElement.append(style);
         let arranging = false;
+        const scheduleMeasurement = () => requestAnimationFrame(() => reportCompactSize());
+        reportCompactSize = () => {
+          if (!usesEars() || !document.body) return;
+          const extent = (side) => {
+            const ear = document.body.querySelector(`[data-notch-ear=${side}]`);
+            if (!ear) return 0;
+            const rects = [...ear.children]
+              .filter((node) => node instanceof HTMLElement && getComputedStyle(node).display !== "none")
+              .map((node) => node.getBoundingClientRect())
+              .filter((rect) => rect.width > 0 && rect.height > 0);
+            if (!rects.length) return 0;
+            const left = Math.min(...rects.map((rect) => rect.left));
+            const right = Math.max(...rects.map((rect) => rect.right));
+            return Math.ceil(Math.max(0, right - left) + 20);
+          };
+          const leading = Math.min(leadingWidth, extent("leading"));
+          const trailing = Math.min(trailingWidth, extent("trailing"));
+          window.parent.postMessage({ source: "notch-compact-size", id: slug, leading, trailing }, "*");
+        };
         const isContent = (node) => {
           if (!(node instanceof Element) || node.hasAttribute("data-notch-ear")) return false;
           const tag = node.tagName;
@@ -95,6 +125,7 @@ enum WidgetBridge {
             (index < mid ? leading : trailing).append(node);
           });
           arranging = false;
+          scheduleMeasurement();
         };
         const park = () => {
           if (!usesEars() || arranging || !document.body) return;
@@ -108,13 +139,18 @@ enum WidgetBridge {
           arranging = true;
           stray.forEach((node) => trailing.append(node));
           arranging = false;
+          scheduleMeasurement();
         };
         const ready = () => {
           (document.head || document.documentElement).append(style);
           arrange();
           if (!document.body) return;
-          const observer = new MutationObserver(() => park());
+          const observer = new MutationObserver(() => {
+            park();
+            scheduleMeasurement();
+          });
           observer.observe(document.body, { childList: true });
+          scheduleMeasurement();
         };
         if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", ready, { once: true });
         else ready();
@@ -333,22 +369,29 @@ final class WidgetRuntime {
                 height: manifest.height ?? 112,
                 revision: revision(of: folder),
                 hasCompact: hasCompact,
-                compactWidth: hasCompact ? (manifest.compactWidth ?? 200) : 0
+                compactLeadingWidth: hasCompact ? manifest.compactLeadingWidth : 0,
+                compactTrailingWidth: hasCompact ? manifest.compactTrailingWidth : 0
             )
         }
     }
 
-    private func readManifest(_ url: URL) -> (title: String?, width: Int?, height: Int?, compactWidth: Int?) {
+    private func readManifest(_ url: URL) -> (title: String?, width: Int?, height: Int?, compactLeadingWidth: Int, compactTrailingWidth: Int) {
         guard let data = try? Data(contentsOf: url),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return (nil, nil, nil, nil)
+            return (nil, nil, nil, 100, 100)
         }
         let title = object["title"] as? String
         let width = Self.positive(object["width"])
         let height = Self.positive(object["height"])
         let compact = object["compact"] as? [String: Any]
         let compactWidth = Self.positive(compact?["width"])
-        return (title, width, height, compactWidth)
+        let leading = Self.positive(compact?["leadingWidth"])
+        let trailing = Self.positive(compact?["trailingWidth"])
+        if leading != nil || trailing != nil {
+            return (title, width, height, leading ?? 0, trailing ?? 0)
+        }
+        let legacyWidth = compactWidth ?? 200
+        return (title, width, height, legacyWidth / 2, legacyWidth - legacyWidth / 2)
     }
 
     private static func flag(_ value: Any?) -> Bool? {
