@@ -23,7 +23,8 @@ struct ShelfWidget: Codable, Equatable {
     var row: Int
     var slot: Int
     var hasCompact: Bool
-    var compactWidth: Int
+    var compactLeadingWidth: Int
+    var compactTrailingWidth: Int
 }
 
 struct ShelfSession: Codable, Equatable {
@@ -36,6 +37,8 @@ struct ShelfSession: Codable, Equatable {
 
 struct ShelfState: Codable {
     var hasKey: Bool
+    var provider: String
+    var auth: ShelfAuth
     var nodeMissing: Bool
     var models: [ShelfModel]
     var modelId: String
@@ -57,6 +60,12 @@ struct ShelfState: Codable {
     var pinnedCompactId: String
 }
 
+struct ShelfAuth: Codable {
+    var checked: Bool
+    var connected: Bool
+    var message: String
+}
+
 private struct ChatSession: Codable, Equatable {
     var id: String
     var agentId: String
@@ -64,6 +73,8 @@ private struct ChatSession: Codable, Equatable {
     var title: String
     var preview: String
     var updated: TimeInterval
+    /// Nil denotes a pre-provider Cursor session saved by older builds.
+    var provider: String?
 }
 
 @MainActor
@@ -79,6 +90,8 @@ final class AppModel: NSObject {
     private var nodeMissing = false
     private var models: [ShelfModel] = []
     private var modelId = ""
+    private var provider = "cursor"
+    private var auth = ShelfAuth(checked: false, connected: false, message: "Checking connection…")
     private var transcripts: [String: [ShelfMessage]] = [:]
     private var runningIds: Set<String> = []
     private var pendingSend: Set<String> = []
@@ -114,6 +127,7 @@ final class AppModel: NSObject {
     private var picking = false
 
     private let modelDefaultsKey = "modelId"
+    private let providerDefaultsKey = "agentProvider"
     private let titlesDefaultsKey = "showWidgetTitles"
     private let pinDefaultsKey = "pinnedCompactId"
     private let maxWidgetRows = 3
@@ -124,6 +138,7 @@ final class AppModel: NSObject {
     private var pinnedCompactId: String?
     private var focusedWidgetId: String?
     private var compactLive: [String: TimeInterval] = [:]
+    private var compactMeasured: [String: CompactLayout] = [:]
     private var workerBodies: [String: Any] = [:]
     private var reportedOpen: CGFloat = -1
     private let sessionsURL: URL
@@ -187,12 +202,17 @@ final class AppModel: NSObject {
             self?.forwardWorker(id: id, body: body)
         }
         modelId = UserDefaults.standard.string(forKey: modelDefaultsKey) ?? ""
+        provider = UserDefaults.standard.string(forKey: providerDefaultsKey) ?? "cursor"
+        if !["cursor", "claude", "codex"].contains(provider) { provider = "cursor" }
         if UserDefaults.standard.object(forKey: titlesDefaultsKey) != nil {
             showTitles = UserDefaults.standard.bool(forKey: titlesDefaultsKey)
         }
         let storedPin = UserDefaults.standard.string(forKey: pinDefaultsKey) ?? ""
         pinnedCompactId = storedPin.isEmpty ? nil : storedPin
-        hasKey = KeychainStore.load() != nil
+        hasKey = configured
+        auth = provider == "cursor"
+            ? ShelfAuth(checked: hasKey, connected: hasKey, message: hasKey ? "API key saved" : "Enter your Cursor API key")
+            : ShelfAuth(checked: false, connected: false, message: "Checking connection…")
         if let data = try? Data(contentsOf: sessionsURL),
            let stored = try? JSONDecoder().decode([ChatSession].self, from: data) {
             let kept = stored.filter { !$0.preview.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -224,8 +244,8 @@ final class AppModel: NSObject {
             persistHidden()
         }
         runtime.start()
-        if let key = KeychainStore.load(), let nodeURL {
-            launchSidecar(node: nodeURL, script: script, apiKey: key)
+        if let nodeURL {
+            launchSidecar(node: nodeURL, script: script, apiKey: providerKey ?? "")
         }
         panel.present()
         webView.load(URLRequest(url: URL(string: "notch://shelf/index.html")!))
@@ -329,6 +349,14 @@ final class AppModel: NSObject {
             if let id = body["id"] as? String { openFromCompact(id) }
         case "compactAction":
             panel.holdClosed()
+        case "compactSize":
+            if let id = body["id"] as? String {
+                noteCompactSize(
+                    id: id,
+                    leading: body["leading"] as? Double ?? 0,
+                    trailing: body["trailing"] as? Double ?? 0
+                )
+            }
         case "clearFocus":
             clearFocus()
         case "compactReady":
@@ -519,21 +547,29 @@ final class AppModel: NSObject {
     }
 
     private func saveSettings(_ body: [String: Any]) {
+        if let requested = body["provider"] as? String, ["cursor", "claude", "codex"].contains(requested) {
+            provider = requested
+            UserDefaults.standard.set(provider, forKey: providerDefaultsKey)
+            hasKey = configured
+            auth = provider == "cursor"
+                ? ShelfAuth(checked: hasKey, connected: hasKey, message: hasKey ? "API key saved" : "Enter your Cursor API key")
+                : ShelfAuth(checked: false, connected: false, message: "Checking connection…")
+        }
         if let model = body["modelId"] as? String, !model.isEmpty {
             modelId = model
             UserDefaults.standard.set(model, forKey: modelDefaultsKey)
             sidecar.send(["type": "setModel", "modelId": model])
         }
         let apiKey = (body["apiKey"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !hasKey && apiKey.isEmpty {
+        if provider == "cursor" && !hasKey && apiKey.isEmpty {
             error = "Add a Cursor API key."
             push()
             return
         }
         if !apiKey.isEmpty {
             do {
-                try KeychainStore.save(apiKey)
-                hasKey = true
+                try KeychainStore.save(apiKey, for: keychainProvider)
+                hasKey = configured
                 error = nil
                 guard let nodeURL, let scriptURL else {
                     nodeMissing = true
@@ -542,12 +578,29 @@ final class AppModel: NSObject {
                     return
                 }
                 restartLeft = 1
-                launchSidecar(node: nodeURL, script: scriptURL, apiKey: apiKey)
+                launchSidecar(node: nodeURL, script: scriptURL, apiKey: providerKey ?? "")
             } catch {
                 self.error = "The key could not be saved."
             }
         }
+        if apiKey.isEmpty, provider != "cursor", let nodeURL, let scriptURL {
+            restartLeft = 1
+            launchSidecar(node: nodeURL, script: scriptURL, apiKey: providerKey ?? "")
+        }
         push()
+    }
+
+    private var keychainProvider: KeychainStore.Provider {
+        KeychainStore.Provider(rawValue: provider) ?? .cursor
+    }
+
+    private var providerKey: String? {
+        KeychainStore.load(for: keychainProvider)
+    }
+
+    /// Claude Code and Codex normally authenticate through their own local login.
+    private var configured: Bool {
+        provider != "cursor" || providerKey != nil
     }
 
     private func pickAttachments() {
@@ -623,7 +676,7 @@ final class AppModel: NSObject {
 
     private func send(_ raw: String, attachments: [[String: String]] = []) {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let id = activeSessionId, hasKey, !runningIds.contains(id), !nodeMissing else { return }
+        guard let id = activeSessionId, configured, !runningIds.contains(id), !nodeMissing else { return }
         guard !text.isEmpty || !attachments.isEmpty else { return }
         let names = attachments.compactMap { $0["name"] }.joined(separator: ", ")
         let display = text.isEmpty ? names : (names.isEmpty ? text : "\(text)\n\(names)")
@@ -642,7 +695,7 @@ final class AppModel: NSObject {
         }
         error = nil
         push()
-        var payload: [String: Any] = ["type": "send", "sessionId": id, "text": text]
+        var payload: [String: Any] = ["type": "send", "sessionId": id, "text": text, "provider": provider]
         if !attachments.isEmpty {
             payload["attachments"] = attachments
         }
@@ -663,6 +716,7 @@ final class AppModel: NSObject {
         var start: [String: Any] = [
             "type": "start",
             "apiKey": apiKey,
+            "provider": provider,
             "workspace": runtime.widgetsRoot.deletingLastPathComponent().path,
         ]
         if !modelId.isEmpty {
@@ -674,13 +728,13 @@ final class AppModel: NSObject {
     private func sidecarExited(_ message: String) {
         runningIds.removeAll()
         pendingSend.removeAll()
-        guard hasKey, restartLeft > 0, let nodeURL, let scriptURL, let key = KeychainStore.load() else {
+        guard configured, restartLeft > 0, let nodeURL, let scriptURL else {
             error = message
             push()
             return
         }
         restartLeft -= 1
-        launchSidecar(node: nodeURL, script: scriptURL, apiKey: key)
+        launchSidecar(node: nodeURL, script: scriptURL, apiKey: providerKey ?? "")
     }
 
     private func handleSidecar(_ event: SidecarEvent) {
@@ -700,6 +754,8 @@ final class AppModel: NSObject {
                 sidecar.send(["type": "setModel", "modelId": modelId])
             }
             if mode == "settings" { layoutPanel() }
+        case "auth":
+            auth = ShelfAuth(checked: true, connected: event.connected ?? false, message: event.message ?? "Not connected")
         case "agent":
             if let agentId = event.agentId, let id = event.sessionId {
                 touch(id) { $0.agentId = agentId }
@@ -795,6 +851,8 @@ final class AppModel: NSObject {
         let shownError = mode == "chat" ? (activeSessionId.flatMap { sessionErrors[$0] } ?? error) : error
         let state = ShelfState(
             hasKey: hasKey,
+            provider: provider,
+            auth: auth,
             nodeMissing: nodeMissing,
             models: models,
             modelId: modelId,
@@ -1271,7 +1329,8 @@ final class AppModel: NSObject {
             widgetId: nil,
             title: "New widget",
             preview: "",
-            updated: Date().timeIntervalSince1970
+            updated: Date().timeIntervalSince1970,
+            provider: provider
         )
         discardDrafts()
         drafts.insert(session.id)
@@ -1306,7 +1365,8 @@ final class AppModel: NSObject {
             widgetId: id,
             title: title,
             preview: "",
-            updated: Date().timeIntervalSince1970
+            updated: Date().timeIntervalSince1970,
+            provider: provider
         )
         discardDrafts()
         drafts.insert(session.id)
@@ -1323,7 +1383,17 @@ final class AppModel: NSObject {
     }
 
     private func reopen(_ id: String) {
-        guard requireKey(), let session = sessions.first(where: { $0.id == id }) else { return }
+        guard let session = sessions.first(where: { $0.id == id }) else { return }
+        let sessionProvider = session.provider ?? "cursor"
+        if provider != sessionProvider {
+            provider = sessionProvider
+            UserDefaults.standard.set(provider, forKey: providerDefaultsKey)
+            hasKey = configured
+            if let nodeURL, let scriptURL {
+                launchSidecar(node: nodeURL, script: scriptURL, apiKey: providerKey ?? "")
+            }
+        }
+        guard requireKey() else { return }
         discardDrafts(keeping: id)
         activeSessionId = id
         error = nil
@@ -1340,14 +1410,14 @@ final class AppModel: NSObject {
     }
 
     private func openAgent(_ session: ChatSession) {
-        var payload: [String: Any] = ["type": "open", "sessionId": session.id]
+        var payload: [String: Any] = ["type": "open", "sessionId": session.id, "provider": session.provider ?? provider]
         if !session.agentId.isEmpty { payload["agentId"] = session.agentId }
         sidecar.send(payload)
     }
 
     private func requireKey() -> Bool {
-        guard hasKey, !nodeMissing else {
-            if !hasKey { openSettings() }
+        guard configured, !nodeMissing else {
+            if !configured { openSettings() }
             return false
         }
         return true
@@ -1367,7 +1437,8 @@ final class AppModel: NSObject {
                 row: place.row,
                 slot: place.slot,
                 hasCompact: record.hasCompact,
-                compactWidth: record.compactWidth
+                compactLeadingWidth: record.compactLeadingWidth,
+                compactTrailingWidth: record.compactTrailingWidth
             )
         }
         let ids = Set(next.map(\.id))
@@ -1473,11 +1544,31 @@ final class AppModel: NSObject {
         }
         let known = Set(widgets.map(\.id))
         compactLive = compactLive.filter { known.contains($0.key) }
+        compactMeasured = compactMeasured.filter { known.contains($0.key) }
         if let focusedWidgetId, !widgets.contains(where: { $0.id == focusedWidgetId && !$0.hidden }) {
             self.focusedWidgetId = nil
         }
-        let width = activeCompactId.flatMap { id in widgets.first { $0.id == id }?.compactWidth }
-        panel.setCompactWidth(width.map { CGFloat($0) })
+        let layout = activeCompactId.flatMap { id in
+            widgets.first { $0.id == id }.map { widget in
+                let measured = compactMeasured[id]
+                return CompactLayout(
+                    leadingWidth: min(CGFloat(widget.compactLeadingWidth), measured?.leadingWidth ?? CGFloat(widget.compactLeadingWidth)),
+                    trailingWidth: min(CGFloat(widget.compactTrailingWidth), measured?.trailingWidth ?? CGFloat(widget.compactTrailingWidth))
+                )
+            }
+        }
+        panel.setCompactLayout(layout)
+    }
+
+    private func noteCompactSize(id: String, leading: Double, trailing: Double) {
+        guard let widget = widgets.first(where: { $0.id == id && $0.hasCompact && !$0.hidden }) else { return }
+        let layout = CompactLayout(
+            leadingWidth: min(CGFloat(widget.compactLeadingWidth), max(0, CGFloat(leading))),
+            trailingWidth: min(CGFloat(widget.compactTrailingWidth), max(0, CGFloat(trailing)))
+        )
+        guard compactMeasured[id] != layout else { return }
+        compactMeasured[id] = layout
+        if activeCompactId == id { syncCompact() }
     }
 
     private func pinCompact(_ id: String) {

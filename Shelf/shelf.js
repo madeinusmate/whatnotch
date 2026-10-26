@@ -20,6 +20,19 @@ const shelfEl = document.getElementById("shelf");
 const titleEl = document.getElementById("chat-title");
 const keyEl = document.getElementById("key");
 const modelEl = document.getElementById("model");
+const providerEl = document.getElementById("provider");
+const providerNameEl = document.getElementById("provider-name");
+const providerCopyEl = document.getElementById("provider-copy");
+const keyLabelEl = document.getElementById("key-label");
+const providerStatusEl = document.getElementById("provider-status");
+const providerSummaryEl = document.getElementById("provider-summary");
+const providerEditEl = document.getElementById("provider-edit");
+const providerCancelEl = document.getElementById("provider-cancel");
+const settingsFormEl = document.getElementById("settings-form");
+const credentialFieldEl = document.getElementById("credential-field");
+const modelFieldEl = document.getElementById("model-field");
+let providerEditing = false;
+let savedProvider = "cursor";
 const listEl = document.getElementById("widget-list");
 const titlesToggleEl = document.getElementById("titles-toggle");
 const confirmTitleEl = document.getElementById("confirm-title");
@@ -1029,8 +1042,8 @@ const housingWidth = () => {
   return Number.isFinite(value) && value > 0 ? value : 0;
 };
 
-const compactSource = (id, revision, housing) =>
-  `notch://widget/${encodeURIComponent(id)}/compact.html?rev=${revision}&housing=${housing}`;
+const compactSource = (id, revision, housing, leading, trailing) =>
+  `notch://widget/${encodeURIComponent(id)}/compact.html?rev=${revision}&housing=${housing}&leading=${leading}&trailing=${trailing}`;
 
 const ensureCompactFrame = () => {
   let frame = compactEl.querySelector("iframe");
@@ -1056,7 +1069,9 @@ const renderCompact = (id, widgets) => {
     compactEl.replaceChildren();
     return;
   }
-  const signature = `${widget.id}:${widget.revision}`;
+  const leading = Math.max(0, Number(widget.compactLeadingWidth) || 0);
+  const trailing = Math.max(0, Number(widget.compactTrailingWidth) || 0);
+  const signature = `${widget.id}:${widget.revision}:${leading}:${trailing}`;
   compactEl.hidden = false;
   const frame = ensureCompactFrame();
   frame.dataset.id = widget.id;
@@ -1064,9 +1079,13 @@ const renderCompact = (id, widgets) => {
   frame.title = widget.title;
   if (signature === compactSignature) return;
   compactSignature = signature;
+  frame.dataset.requestedLeading = String(leading);
+  frame.dataset.requestedTrailing = String(trailing);
+  frame.dataset.leading = String(leading);
+  frame.dataset.trailing = String(trailing);
   const housing = housingWidth();
   frame.dataset.housing = String(housing);
-  frame.src = compactSource(widget.id, widget.revision, housing);
+  frame.src = compactSource(widget.id, widget.revision, housing, leading, trailing);
 };
 
 const renderLibrary = (widgets, pinnedId) => {
@@ -1204,6 +1223,24 @@ window.shelf = {
     if (editing || creating.length) emptyEl.hidden = true;
     renderMessages(state.messages);
     renderModels(state.models || [], state.modelId || "");
+    const provider = state.provider || "cursor";
+    savedProvider = provider;
+    providerEl.value = provider;
+    const providerInfo = {
+      cursor: ["Cursor", "Uses a Cursor API key for this workspace.", "API key", true, true],
+      claude: ["Claude Code", "Uses the Claude Code account signed in on this Mac.", "API key (optional)", false, true],
+      codex: ["Codex (ChatGPT)", "Uses the Codex account signed in on this Mac.", "API key (optional)", false, false],
+    }[provider] || ["Cursor", "Uses a Cursor API key for this workspace.", "API key", true, true];
+    providerNameEl.textContent = providerInfo[0];
+    providerCopyEl.textContent = providerInfo[1];
+    keyLabelEl.textContent = providerInfo[2];
+    credentialFieldEl.hidden = !providerInfo[3] || !providerEditing;
+    modelFieldEl.hidden = !providerInfo[4] || !providerEditing;
+    providerSummaryEl.hidden = providerEditing;
+    settingsFormEl.hidden = !providerEditing;
+    const auth = state.auth || {};
+    providerStatusEl.textContent = auth.message || (auth.checked ? "Not connected" : "Checking connection…");
+    providerStatusEl.dataset.connected = auth.connected ? "true" : "false";
     renderLibrary(widgets, state.pinnedCompactId || "");
     renderCompact(state.compactWidgetId || "", widgets);
     const locked = !state.hasKey || state.nodeMissing;
@@ -1235,7 +1272,9 @@ window.shelf = {
       emptyHint.textContent = "They show up here once you describe one.";
       createEl.hidden = false;
     }
-    keyEl.placeholder = state.hasKey ? "Key saved" : "Paste a key";
+    keyEl.placeholder = provider === "cursor"
+      ? (state.hasKey ? "Key saved" : "Paste a key")
+      : "Leave blank to use the local sign-in";
     inputEl.disabled = locked;
     inputEl.placeholder = state.nodeMissing
       ? "Node.js 22.13 or newer is required"
@@ -1280,7 +1319,7 @@ window.shelf = {
     const split = (amount) => amount > 1;
     frame.dataset.housing = String(value);
     if (split(previous) !== split(value)) {
-      frame.src = compactSource(frame.dataset.id, frame.dataset.rev || "", value);
+      frame.src = compactSource(frame.dataset.id, frame.dataset.rev || "", value, frame.dataset.leading || "0", frame.dataset.trailing || "0");
       return;
     }
     frame.contentWindow?.postMessage({ source: "notch-host", type: "housing", width: value }, "*");
@@ -1317,8 +1356,46 @@ titlesToggleEl.addEventListener("change", () => {
 
 document.getElementById("settings-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  post({ type: "saveSettings", apiKey: keyEl.value, modelId: modelEl.value });
+  post({ type: "saveSettings", provider: providerEl.value, apiKey: keyEl.value, modelId: modelEl.value });
+  providerEditing = false;
+  providerSummaryEl.hidden = false;
+  settingsFormEl.hidden = true;
   keyEl.value = "";
+});
+
+providerEl.addEventListener("change", () => {
+  const provider = providerEl.value;
+  const providerInfo = {
+    cursor: ["Cursor", "Uses a Cursor API key for this workspace.", "API key", true, true],
+    claude: ["Claude Code", "Uses the Claude Code account signed in on this Mac.", "API key (optional)", false, true],
+    codex: ["Codex (ChatGPT)", "Uses the Codex account signed in on this Mac.", "API key (optional)", false, false],
+  }[provider];
+  if (!providerInfo) return;
+  providerNameEl.textContent = providerInfo[0];
+  providerCopyEl.textContent = providerInfo[1];
+  keyLabelEl.textContent = providerInfo[2];
+  credentialFieldEl.hidden = !providerInfo[3];
+  modelFieldEl.hidden = !providerInfo[4];
+  keyEl.placeholder = provider === "cursor" ? "Paste a key" : "Leave blank to use the local sign-in";
+  providerStatusEl.textContent = provider === "cursor" ? "Enter your Cursor API key, then Save." : "Save to check local sign-in status.";
+  providerStatusEl.dataset.connected = "false";
+  modelEl.replaceChildren();
+});
+
+providerEditEl.addEventListener("click", () => {
+  providerEditing = true;
+  providerSummaryEl.hidden = true;
+  settingsFormEl.hidden = false;
+  credentialFieldEl.hidden = providerEl.value !== "cursor";
+  modelFieldEl.hidden = providerEl.value === "codex";
+});
+
+providerCancelEl.addEventListener("click", () => {
+  providerEditing = false;
+  providerEl.value = savedProvider;
+  providerEl.dispatchEvent(new Event("change"));
+  providerSummaryEl.hidden = false;
+  settingsFormEl.hidden = true;
 });
 
 document.getElementById("quit").addEventListener("click", () => post({ type: "quit" }));
@@ -1412,6 +1489,20 @@ window.addEventListener("blur", () => {
 
 window.addEventListener("message", (event) => {
   const data = event.data;
+  if (data?.source === "notch-compact-size") {
+    const frame = compactEl.querySelector("iframe");
+    if (!frame || event.source !== frame.contentWindow || data.id !== frame.dataset.id) return;
+    const requestedLeading = Math.max(0, Number(frame.dataset.requestedLeading) || 0);
+    const requestedTrailing = Math.max(0, Number(frame.dataset.requestedTrailing) || 0);
+    const leading = Math.min(requestedLeading, Math.max(0, Number(data.leading) || 0));
+    const trailing = Math.min(requestedTrailing, Math.max(0, Number(data.trailing) || 0));
+    if (leading === Number(frame.dataset.leading) && trailing === Number(frame.dataset.trailing)) return;
+    frame.dataset.leading = String(leading);
+    frame.dataset.trailing = String(trailing);
+    post({ type: "compactSize", id: data.id, leading, trailing });
+    frame.src = compactSource(data.id, frame.dataset.rev || "", frame.dataset.housing || "0", leading, trailing);
+    return;
+  }
   if (!data || data.source !== "notch-press" || typeof data.id !== "string") return;
   const compactFrame = compactEl.querySelector("iframe");
   if (compactFrame && event.source === compactFrame.contentWindow) {

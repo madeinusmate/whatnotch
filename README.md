@@ -4,14 +4,14 @@
   <img src="docs/icon.jpg" alt="Whatnotch app icon" width="320" />
 </p>
 
-**A Cursor agent that lives in your MacBook notch** — chat from the shelf, ship small HTML widgets, and keep live state on the closed notch when you need it.
+**A coding agent that lives in your MacBook notch** — chat from the shelf, ship small HTML widgets, and keep live state on the closed notch when you need it.
 
 **Whatnotch** is a menu-bar–style macOS app (no Dock icon) built for Macs with a camera housing notch.
 
 ## What it does
 
 - **Notch-native UI** — The shelf drops from the black notch; widgets size to their content and respect reduced motion.
-- **Cursor-powered agent** — A Node sidecar talks to the [Cursor Agent SDK](https://www.npmjs.com/package/@cursor/sdk) using your API key (stored in the macOS Keychain, never exposed to widget pages).
+- **Choose your coding agent** — Cursor uses its SDK and API key; Claude Code and Codex use the authenticated local CLI already installed on your Mac. Provider-native sessions are kept separate.
 - **Widget workspace** — Ask for a timer, a status strip, or a tiny dashboard; the agent creates a folder under your user workspace with `index.html`, optional `worker.mjs`, and optional `compact.html` for the closed notch.
 - **Safe widget bridge** — Widgets run in isolated `widget://` pages with a narrow `window.notch` API (shell, files, HTTP). No access to the API key or sidecar.
 
@@ -25,6 +25,8 @@
 | **pnpm** | 8.x (used by the bundled sidecar build script) |
 | **Xcode** | Recent Xcode with the macOS 14 SDK |
 | **Cursor** | API key from your Cursor account (entered once in Settings) |
+| **Claude Code** *(optional)* | Installed and signed in (`claude`) |
+| **Codex / ChatGPT** *(optional)* | Codex CLI installed and signed in (bundled with the ChatGPT macOS app when available) |
 
 ## Quick start
 
@@ -41,8 +43,8 @@ In Xcode, select the **Whatnotch** scheme and **Run** (⌘R). The first build in
 ### First launch
 
 1. Move the pointer to the top of the screen to open the shelf (or use the compact notch affordance when a widget is live).
-2. Open **Settings** (gear) and paste your **Cursor API key**.
-3. Pick a model, then describe a widget — for example, “a pomodoro timer with a compact countdown on the notch.”
+2. Open **Settings** (gear), choose Cursor, Claude Code, or Codex (ChatGPT), then complete that provider’s sign-in.
+3. Pick a model where available, then describe a widget — for example, “a pomodoro timer with a compact countdown on the notch.”
 
 Your agent workspace lives at:
 
@@ -138,7 +140,7 @@ xcodegen generate
 
 ## Security model
 
-- **API keys** live in the Keychain (`app.whatnotch.Whatnotch`); the sidecar receives the key only over a private stdin protocol from the Swift host.
+- **API keys** live in the Keychain (`app.whatnotch.Whatnotch`), one entry per provider; the sidecar receives a key only over a private stdin protocol from the Swift host. Claude Code and Codex may instead use their own local authenticated sessions.
 - **Widget isolation** uses custom URL schemes and message handlers; only `widget://` pages receive `window.notch`.
 - **Network and shell** from widgets are intentionally limited — HTTP(S) only, commands run with a minimal environment and output caps.
 

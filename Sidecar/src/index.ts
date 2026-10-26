@@ -2,19 +2,23 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
+import { spawn, type ChildProcess } from "node:child_process";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { Agent, Cursor, type SDKImage, type SDKMessage, type SDKUserMessage } from "@cursor/sdk";
 
 type Attachment = { name: string; kind?: string; mime?: string; data?: string };
 
 type Inbound =
-  | { type: "start"; apiKey: string; workspace: string; agentId?: string; modelId?: string }
-  | { type: "send"; text: string; modelId?: string; sessionId?: string; attachments?: Attachment[] }
+  | { type: "start"; apiKey: string; provider?: Provider; workspace: string; agentId?: string; modelId?: string }
+  | { type: "send"; text: string; provider?: Provider; modelId?: string; sessionId?: string; attachments?: Attachment[] }
   | { type: "cancel"; sessionId?: string }
   | { type: "newChat"; sessionId?: string }
   | { type: "open"; agentId?: string; sessionId?: string }
   | { type: "setModel"; modelId: string };
 
 type Row = { id: string; role: "user" | "assistant" | "tool"; text: string };
+type Provider = "cursor" | "claude" | "codex";
 
 type CatalogItem = Awaited<ReturnType<typeof Cursor.models.list>>[number];
 
@@ -147,8 +151,31 @@ type Slot = {
 let apiKey = "";
 let workspace = "";
 let modelId = "";
+let provider: Provider = "cursor";
 let catalog: CatalogItem[] = [];
 const slots = new Map<string, Slot>();
+const cliRuns = new Map<string, ChildProcess>();
+const execFileAsync = promisify(execFile);
+
+const checkAuth = async () => {
+  if (provider === "cursor") {
+    const connected = Boolean(apiKey);
+    emit({ type: "auth", connected, message: connected ? "API key saved" : "Enter your Cursor API key" });
+    return;
+  }
+  const command = provider === "claude" ? "claude" : "codex";
+  const args = provider === "claude" ? ["auth", "status", "--json"] : ["login", "status"];
+  try {
+    const result = await execFileAsync(command, args, { env: process.env, timeout: 8_000 });
+    const output = `${result.stdout}\n${result.stderr}`;
+    const connected = provider === "claude"
+      ? /loggedIn"?\s*:\s*true|authenticated|logged in/i.test(output)
+      : /logged in|authenticated/i.test(output) && !/not logged in|not authenticated/i.test(output);
+    emit({ type: "auth", connected, message: connected ? "Connected" : `Sign in with ${provider === "claude" ? "Claude Code" : "Codex"}` });
+  } catch {
+    emit({ type: "auth", connected: false, message: `${command} is not signed in` });
+  }
+};
 
 const paramsFor = (id: string) => {
   const model = catalog.find((item) => item.id === id);
@@ -224,7 +251,25 @@ const start = async (message: Extract<Inbound, { type: "start" }>) => {
   apiKey = message.apiKey;
   workspace = message.workspace;
   modelId = message.modelId ?? "";
+  provider = message.provider ?? "cursor";
   slots.clear();
+  await checkAuth();
+  if (provider === "claude") {
+    catalog = [];
+    emit({ type: "models", models: [
+      { id: "sonnet", displayName: "Sonnet" },
+      { id: "opus", displayName: "Opus" },
+      { id: "haiku", displayName: "Haiku" },
+    ] });
+    return;
+  }
+  if (provider === "codex") {
+    catalog = [];
+    emit({ type: "models", models: [
+      { id: "", displayName: "Default Codex model" },
+    ] });
+    return;
+  }
   try {
     catalog = await Cursor.models.list({ apiKey });
   } catch (error) {
@@ -240,6 +285,13 @@ const start = async (message: Extract<Inbound, { type: "start" }>) => {
 };
 
 const openSession = async (sessionId: string, agentId?: string) => {
+  if (provider !== "cursor") {
+    const slot = slotFor(sessionId);
+    slot.agentId = agentId?.trim() ?? "";
+    emit({ type: "transcript", sessionId, messages: [] });
+    emit({ type: "run", sessionId, state: "idle" });
+    return;
+  }
   const slot = slotFor(sessionId);
   if (slot.run) {
     emit({ type: "run", sessionId, state: "running" });
@@ -290,7 +342,92 @@ const compose = async (text: string, attachments: Attachment[]): Promise<string 
   return images.length ? { text: prompt, images } : prompt;
 };
 
+const cliPrompt = async (text: string, attachments: Attachment[]) => {
+  const paths: string[] = [];
+  for (const item of attachments.slice(0, 8)) {
+    if (item.data && item.data.length <= 5_800_000) paths.push(`${item.name}: ${await stageAttachment(item)}`);
+  }
+  const note = paths.length ? `Attached files:\n${paths.map((path) => `- ${path}`).join("\n")}` : "";
+  return [text.trim(), note].filter(Boolean).join("\n\n") || "Inspect the attached files.";
+};
+
+const valueAt = (value: unknown, keys: string[]): string => {
+  if (!value || typeof value !== "object") return "";
+  const record = value as Record<string, unknown>;
+  for (const key of keys) if (typeof record[key] === "string") return record[key] as string;
+  return "";
+};
+
+const runCli = async (sessionId: string, text: string, requestedModel: string | undefined, attachments: Attachment[]) => {
+  const slot = slotFor(sessionId);
+  const token = ++slot.generation;
+  const prompt = await cliPrompt(text, attachments);
+  const resume = slot.agentId.trim();
+  const command = provider === "claude" ? "claude" : "codex";
+  const args = provider === "claude"
+    ? ["-p", prompt, "--output-format", "stream-json", "--verbose", ...(resume ? ["--resume", resume] : []), ...(requestedModel ? ["--model", requestedModel] : [])]
+    : ["exec", "--json", "--sandbox", "workspace-write", ...(resume ? ["resume", resume] : []), ...(requestedModel ? ["--model", requestedModel] : []), prompt];
+  emit({ type: "run", sessionId, state: "running" });
+  let child: ChildProcess;
+  try {
+    const env = { ...process.env };
+    if (apiKey) {
+      if (provider === "claude") env.ANTHROPIC_API_KEY = apiKey;
+      if (provider === "codex") env.OPENAI_API_KEY = apiKey;
+    }
+    child = spawn(command, args, { cwd: workspace, env, stdio: ["ignore", "pipe", "pipe"] });
+  } catch (error) {
+    emit({ type: "run", sessionId, state: "error", message: `${command} could not start: ${friendly(error)}` });
+    return;
+  }
+  cliRuns.set(sessionId, child);
+  let errorText = "";
+  child.once("error", (error) => { errorText += error.message; });
+  let buffer = "";
+  const consume = (line: string) => {
+    let event: Record<string, unknown>;
+    try { event = JSON.parse(line) as Record<string, unknown>; } catch { return; }
+    const type = String(event.type ?? "");
+    const nativeId = valueAt(event, ["session_id", "thread_id"])
+      || valueAt(event.session as unknown, ["id"])
+      || valueAt(event.thread as unknown, ["id"]);
+    if (nativeId && nativeId !== slot.agentId) {
+      slot.agentId = nativeId;
+      emit({ type: "agent", sessionId, agentId: nativeId });
+    }
+    const inner = (event.event && typeof event.event === "object" ? event.event : event) as Record<string, unknown>;
+    const delta = valueAt(inner.delta as unknown, ["text"]) || valueAt(inner, ["text"]);
+    if (/content_block_delta|text_delta|agent_message\/delta/.test(type) && delta) emit({ type: "delta", sessionId, text: delta });
+    const message = inner.message && typeof inner.message === "object" ? inner.message as Record<string, unknown> : null;
+    const content = Array.isArray(message?.content) ? message!.content : [];
+    if (type === "assistant") {
+      for (const block of content) {
+        if (block && typeof block === "object" && (block as Record<string, unknown>).type === "text") {
+          const output = valueAt(block, ["text"]); if (output) emit({ type: "delta", sessionId, text: output });
+        }
+      }
+    }
+    if (/tool|command_execution/.test(type)) emit({ type: "tool", sessionId, id: crypto.randomUUID(), summary: valueAt(inner, ["command", "name"]) || "tool" });
+  };
+  child.stdout?.on("data", (data: Buffer) => {
+    buffer += data.toString();
+    let end: number;
+    while ((end = buffer.indexOf("\n")) >= 0) { consume(buffer.slice(0, end)); buffer = buffer.slice(end + 1); }
+  });
+  child.stderr?.on("data", (data: Buffer) => { errorText += data.toString(); });
+  await new Promise<void>((resolve) => child.once("close", () => resolve()));
+  if (slot.generation !== token) return;
+  cliRuns.delete(sessionId);
+  if (child.exitCode === 0) emit({ type: "run", sessionId, state: "idle" });
+  else emit({ type: "run", sessionId, state: "error", message: errorText.trim().split("\n")[0] || `${command} stopped unexpectedly.` });
+};
+
 const send = async (sessionId: string, text: string, requestedModel?: string, attachments: Attachment[] = []) => {
+  if (provider !== "cursor") {
+    try { await runCli(sessionId, text, requestedModel, attachments); }
+    catch (error) { emit({ type: "run", sessionId, state: "error", message: friendly(error) }); }
+    return;
+  }
   if (requestedModel) modelId = requestedModel;
   rememberModel();
   const model = selection();
@@ -359,6 +496,11 @@ const send = async (sessionId: string, text: string, requestedModel?: string, at
 };
 
 const cancel = async (sessionId: string) => {
+  const cli = cliRuns.get(sessionId);
+  if (cli) {
+    cli.kill("SIGTERM");
+    cliRuns.delete(sessionId);
+  }
   const slot = slots.get(sessionId);
   if (!slot) return;
   slot.generation += 1;
@@ -376,6 +518,10 @@ const handle = async (message: Inbound) => {
   if (message.type === "start") await start(message);
   if (message.type === "setModel") modelId = message.modelId;
   if (message.type === "send" && message.sessionId) {
+    if (message.provider && message.provider !== provider) {
+      emit({ type: "run", sessionId: message.sessionId, state: "error", message: "This chat belongs to a different provider. Reopen it to switch providers." });
+      return;
+    }
     await send(message.sessionId, message.text, message.modelId, message.attachments ?? []);
   }
   if (message.type === "open" && message.sessionId) await openSession(message.sessionId, message.agentId);

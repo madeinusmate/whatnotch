@@ -59,19 +59,34 @@
           <h2 class="settings-head">Settings</h2>
           <section class="settings-card">
             <header>
-              <h3>Cursor</h3>
-              <p>The key and model used to build widgets.</p>
+              <h3>AI provider</h3>
+              <p id="provider-copy">Choose which coding agent should work in your widget workspace.</p>
+              <div id="provider-summary" class="provider-summary">
+                <div><strong id="provider-name">Cursor</strong><p id="provider-status" class="provider-status" role="status">Checking connection…</p></div>
+                <button id="provider-edit" type="button" class="quiet-button">Edit</button>
+              </div>
             </header>
-            <form id="settings-form">
+            <form id="settings-form" hidden>
               <label>
-                <span>API key</span>
+                <span>Use this provider</span>
+                <select id="provider">
+                  <option value="cursor">Cursor</option>
+                  <option value="claude">Claude Code</option>
+                  <option value="codex">Codex (ChatGPT)</option>
+                </select>
+              </label>
+              <label id="credential-field" hidden>
+                <span id="key-label">API key</span>
                 <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste a key" />
               </label>
-              <label>
+              <label id="model-field" hidden>
                 <span>Model</span>
                 <select id="model"></select>
               </label>
-              <button id="save" type="submit">Save</button>
+              <div class="provider-actions">
+                <button id="provider-cancel" type="button" class="quiet-button">Cancel</button>
+                <button id="save" type="submit">Save</button>
+              </div>
             </form>
           </section>
           <section class="settings-card">
