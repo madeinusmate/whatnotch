@@ -23,7 +23,8 @@ struct ShelfWidget: Codable, Equatable {
     var row: Int
     var slot: Int
     var hasCompact: Bool
-    var compactWidth: Int
+    var compactLeadingWidth: Int
+    var compactTrailingWidth: Int
 }
 
 struct ShelfSession: Codable, Equatable {
@@ -124,6 +125,7 @@ final class AppModel: NSObject {
     private var pinnedCompactId: String?
     private var focusedWidgetId: String?
     private var compactLive: [String: TimeInterval] = [:]
+    private var compactMeasured: [String: CompactLayout] = [:]
     private var workerBodies: [String: Any] = [:]
     private var reportedOpen: CGFloat = -1
     private let sessionsURL: URL
@@ -329,6 +331,14 @@ final class AppModel: NSObject {
             if let id = body["id"] as? String { openFromCompact(id) }
         case "compactAction":
             panel.holdClosed()
+        case "compactSize":
+            if let id = body["id"] as? String {
+                noteCompactSize(
+                    id: id,
+                    leading: body["leading"] as? Double ?? 0,
+                    trailing: body["trailing"] as? Double ?? 0
+                )
+            }
         case "clearFocus":
             clearFocus()
         case "compactReady":
@@ -1367,7 +1377,8 @@ final class AppModel: NSObject {
                 row: place.row,
                 slot: place.slot,
                 hasCompact: record.hasCompact,
-                compactWidth: record.compactWidth
+                compactLeadingWidth: record.compactLeadingWidth,
+                compactTrailingWidth: record.compactTrailingWidth
             )
         }
         let ids = Set(next.map(\.id))
@@ -1473,11 +1484,31 @@ final class AppModel: NSObject {
         }
         let known = Set(widgets.map(\.id))
         compactLive = compactLive.filter { known.contains($0.key) }
+        compactMeasured = compactMeasured.filter { known.contains($0.key) }
         if let focusedWidgetId, !widgets.contains(where: { $0.id == focusedWidgetId && !$0.hidden }) {
             self.focusedWidgetId = nil
         }
-        let width = activeCompactId.flatMap { id in widgets.first { $0.id == id }?.compactWidth }
-        panel.setCompactWidth(width.map { CGFloat($0) })
+        let layout = activeCompactId.flatMap { id in
+            widgets.first { $0.id == id }.map { widget in
+                let measured = compactMeasured[id]
+                return CompactLayout(
+                    leadingWidth: min(CGFloat(widget.compactLeadingWidth), measured?.leadingWidth ?? CGFloat(widget.compactLeadingWidth)),
+                    trailingWidth: min(CGFloat(widget.compactTrailingWidth), measured?.trailingWidth ?? CGFloat(widget.compactTrailingWidth))
+                )
+            }
+        }
+        panel.setCompactLayout(layout)
+    }
+
+    private func noteCompactSize(id: String, leading: Double, trailing: Double) {
+        guard let widget = widgets.first(where: { $0.id == id && $0.hasCompact && !$0.hidden }) else { return }
+        let layout = CompactLayout(
+            leadingWidth: min(CGFloat(widget.compactLeadingWidth), max(0, CGFloat(leading))),
+            trailingWidth: min(CGFloat(widget.compactTrailingWidth), max(0, CGFloat(trailing)))
+        )
+        guard compactMeasured[id] != layout else { return }
+        compactMeasured[id] = layout
+        if activeCompactId == id { syncCompact() }
     }
 
     private func pinCompact(_ id: String) {

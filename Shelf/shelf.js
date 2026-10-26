@@ -1029,8 +1029,8 @@ const housingWidth = () => {
   return Number.isFinite(value) && value > 0 ? value : 0;
 };
 
-const compactSource = (id, revision, housing) =>
-  `notch://widget/${encodeURIComponent(id)}/compact.html?rev=${revision}&housing=${housing}`;
+const compactSource = (id, revision, housing, leading, trailing) =>
+  `notch://widget/${encodeURIComponent(id)}/compact.html?rev=${revision}&housing=${housing}&leading=${leading}&trailing=${trailing}`;
 
 const ensureCompactFrame = () => {
   let frame = compactEl.querySelector("iframe");
@@ -1056,7 +1056,9 @@ const renderCompact = (id, widgets) => {
     compactEl.replaceChildren();
     return;
   }
-  const signature = `${widget.id}:${widget.revision}`;
+  const leading = Math.max(0, Number(widget.compactLeadingWidth) || 0);
+  const trailing = Math.max(0, Number(widget.compactTrailingWidth) || 0);
+  const signature = `${widget.id}:${widget.revision}:${leading}:${trailing}`;
   compactEl.hidden = false;
   const frame = ensureCompactFrame();
   frame.dataset.id = widget.id;
@@ -1064,9 +1066,13 @@ const renderCompact = (id, widgets) => {
   frame.title = widget.title;
   if (signature === compactSignature) return;
   compactSignature = signature;
+  frame.dataset.requestedLeading = String(leading);
+  frame.dataset.requestedTrailing = String(trailing);
+  frame.dataset.leading = String(leading);
+  frame.dataset.trailing = String(trailing);
   const housing = housingWidth();
   frame.dataset.housing = String(housing);
-  frame.src = compactSource(widget.id, widget.revision, housing);
+  frame.src = compactSource(widget.id, widget.revision, housing, leading, trailing);
 };
 
 const renderLibrary = (widgets, pinnedId) => {
@@ -1280,7 +1286,7 @@ window.shelf = {
     const split = (amount) => amount > 1;
     frame.dataset.housing = String(value);
     if (split(previous) !== split(value)) {
-      frame.src = compactSource(frame.dataset.id, frame.dataset.rev || "", value);
+      frame.src = compactSource(frame.dataset.id, frame.dataset.rev || "", value, frame.dataset.leading || "0", frame.dataset.trailing || "0");
       return;
     }
     frame.contentWindow?.postMessage({ source: "notch-host", type: "housing", width: value }, "*");
@@ -1412,6 +1418,20 @@ window.addEventListener("blur", () => {
 
 window.addEventListener("message", (event) => {
   const data = event.data;
+  if (data?.source === "notch-compact-size") {
+    const frame = compactEl.querySelector("iframe");
+    if (!frame || event.source !== frame.contentWindow || data.id !== frame.dataset.id) return;
+    const requestedLeading = Math.max(0, Number(frame.dataset.requestedLeading) || 0);
+    const requestedTrailing = Math.max(0, Number(frame.dataset.requestedTrailing) || 0);
+    const leading = Math.min(requestedLeading, Math.max(0, Number(data.leading) || 0));
+    const trailing = Math.min(requestedTrailing, Math.max(0, Number(data.trailing) || 0));
+    if (leading === Number(frame.dataset.leading) && trailing === Number(frame.dataset.trailing)) return;
+    frame.dataset.leading = String(leading);
+    frame.dataset.trailing = String(trailing);
+    post({ type: "compactSize", id: data.id, leading, trailing });
+    frame.src = compactSource(data.id, frame.dataset.rev || "", frame.dataset.housing || "0", leading, trailing);
+    return;
+  }
   if (!data || data.source !== "notch-press" || typeof data.id !== "string") return;
   const compactFrame = compactEl.querySelector("iframe");
   if (compactFrame && event.source === compactFrame.contentWindow) {
