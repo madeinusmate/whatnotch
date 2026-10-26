@@ -4,12 +4,22 @@ import Security
 enum KeychainStore {
     private static let service = "app.whatnotch.Whatnotch"
     private static let previousService = "app.agenticnotch.AgenticNotch"
-    private static let account = "cursor-api-key"
+    enum Provider: String {
+        case cursor, claude, codex
+
+        var account: String { "\(rawValue)-api-key" }
+    }
+
+    private static let account = Provider.cursor.account
 
     static func save(_ secret: String) throws {
+        try save(secret, for: .cursor)
+    }
+
+    static func save(_ secret: String, for provider: Provider) throws {
         let data = Data(secret.utf8)
-        SecItemDelete(baseQuery(service) as CFDictionary)
-        var query = baseQuery(service)
+        SecItemDelete(baseQuery(service, account: provider.account) as CFDictionary)
+        var query = baseQuery(service, account: provider.account)
         query[kSecValueData as String] = data
         query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
         if let access = trustedAccess() {
@@ -22,6 +32,11 @@ enum KeychainStore {
     }
 
     static func load() -> String? {
+        load(for: .cursor)
+    }
+
+    static func load(for provider: Provider) -> String? {
+        if provider != .cursor { return read(service, account: provider.account) }
         if let current = read(service) { return current }
         guard let previous = read(previousService) else { return nil }
         try? save(previous)
@@ -29,8 +44,8 @@ enum KeychainStore {
         return previous
     }
 
-    private static func read(_ service: String) -> String? {
-        var query = baseQuery(service)
+    private static func read(_ service: String, account: String = Provider.cursor.account) -> String? {
+        var query = baseQuery(service, account: account)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
@@ -39,7 +54,7 @@ enum KeychainStore {
         return String(data: data, encoding: .utf8)
     }
 
-    private static func baseQuery(_ service: String) -> [String: Any] {
+    private static func baseQuery(_ service: String, account: String = Provider.cursor.account) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

@@ -11,6 +11,7 @@ struct SidecarEvent {
     var sessionId: String?
     var models: [[String: Any]] = []
     var messages: [[String: Any]] = []
+    var connected: Bool?
 
     init?(line: String) {
         guard line.hasPrefix("AGN\t") else { return nil }
@@ -28,6 +29,7 @@ struct SidecarEvent {
         sessionId = object["sessionId"] as? String
         models = object["models"] as? [[String: Any]] ?? []
         messages = object["messages"] as? [[String: Any]] ?? []
+        connected = object["connected"] as? Bool
     }
 }
 
